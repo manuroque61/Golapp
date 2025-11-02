@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GolApp - Admin</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Panel de Administración</h2>
+      <div><span class="badge" id="uName">Admin</span></div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div>Torneos</div><div class="n" id="kTournaments">0</div></div>
+      <div class="kpi"><div>Equipos</div><div class="n" id="kTeams">0</div></div>
+      <div class="kpi"><div>Capitanes</div><div class="n" id="kCaptains">0</div></div>
+      <div class="kpi"><div>Notificaciones</div><div class="n">2</div></div>
+    </div>
+
+    <div class="nav">
+      <button class="active">Torneos</button>
+      <button onclick="location.href='team.html'">Capitanes</button>
+      <button onclick="location.href='publico.html'">Estadísticas</button>
+    </div>
+
+    <div class="card">
+      <div class="header">
+        <h3>Gestión de Torneos</h3>
+        <button class="btn primary" onclick="crearTorneo()">+ Crear Torneo</button>
+      </div>
+      <table class="table" id="torneosTable">
+        <thead><tr><th>Nombre</th><th>Temporada</th><th>Equipos</th><th>Fechas</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Registrar Resultados</h3>
+      <div id="resultados" class="list"></div>
+    </div>
+  </div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>

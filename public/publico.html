@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GolApp - Público</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="small">← Volver al inicio</a>
+    <h2>Vista Pública - GolApp</h2>
+
+    <div class="card">
+      <h3>Buscar mi equipo</h3>
+      <input id="search" type="text" placeholder="Buscar por nombre de equipo..." oninput="buscar()"/>
+      <div id="results" class="list" style="margin-top:12px"></div>
+    </div>
+
+    <div class="nav">
+      <button id="tab1" class="active" onclick="loadUpcoming()">Próximos Partidos</button>
+      <button id="tab2" onclick="loadTable()">Tabla de Posiciones</button>
+    </div>
+
+    <div class="card">
+      <div id="content"></div>
+    </div>
+  </div>
+
+  <script src="js/public.js"></script>
+</body>
+</html>

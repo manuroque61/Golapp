@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GolApp - Capitán</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h2 id="teamTitle">Mi Equipo</h2></div>
+    <div class="nav">
+      <button class="active">Mi Plantilla</button>
+      <button>Fixture</button>
+      <button>Posiciones</button>
+      <button>Notificaciones</button>
+    </div>
+
+    <div class="card">
+      <h3>Agregar Nuevo Jugador</h3>
+      <div class="form-row">
+        <input id="pname" type="text" placeholder="Nombre del jugador"/>
+        <input id="pnum" type="number" placeholder="N°"/>
+        <select id="ppos">
+          <option>Delantero</option>
+          <option>Mediocampista</option>
+          <option>Defensor</option>
+          <option>Arquero</option>
+        </select>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn green" onclick="agregar()">+ Agregar Jugador</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Jugadores</h3>
+      <div id="players" class="list"></div>
+    </div>
+  </div>
+
+  <script src="js/captain.js"></script>
+</body>
+</html>

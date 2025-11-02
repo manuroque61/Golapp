@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GolApp</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+  <section class="hero">
+    <div class="logo">🏆</div>
+    <h1>GolApp</h1>
+    <p>Organizá tus torneos de fútbol de forma fácil, rápida y automática</p>
+  </section>
+
+  <div class="container">
+    <div class="grid">
+      <div class="card">
+        <h3>Ver mi equipo</h3>
+        <p>Consultá fixture, posiciones y notificaciones sin necesidad de registrarte.</p>
+        <a class="btn gold" href="publico.html">Acceso público</a>
+      </div>
+      <div class="card">
+        <h3>Iniciar sesión</h3>
+        <p>Administradores y capitanes acceden a su panel de gestión.</p>
+        <div class="form-row">
+          <input id="email" type="text" placeholder="Email" />
+          <input id="password" type="password" placeholder="Contraseña" />
+          <button class="btn primary" onclick="login()">Iniciar sesión</button>
+        </div>
+        <p class="small">Usuarios demo: admin@golapp.com (admin123) • capitan@golapp.com (capitan123)</p>
+      </div>
+      <div class="card">
+        <h3>¿Eres nuevo?</h3>
+        <p>Registrate como Administrador y comenzá a gestionar torneos.</p>
+        <a class="btn green" href="#" onclick="demoRegister()">Registrarse</a>
+      </div>
+    </div>
+  </div>
+
+  <footer>Gestión completa • Estadísticas en tiempo real • Fixture automático</footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
