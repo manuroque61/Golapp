@@ -1,32 +1,101 @@
 const API = location.origin + '/api';
 const token = localStorage.getItem('token');
-const teamId = localStorage.getItem('team_id') || 1; // demo
 
-async function agregar(){
-  const name = document.getElementById('pname').value;
-  const number = parseInt(document.getElementById('pnum').value||0,10);
-  const position = document.getElementById('ppos').value;
-  const r = await fetch(`${API}/tournaments/teams/${teamId}/players`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-    body:JSON.stringify({name, number, position})
-  });
-  const d = await r.json();
-  if(d.id){ listar(); }
-  else alert(d.error||'Error');
+if (!token) {
+  location.href = 'index.html';
 }
 
-async function listar(){
-  const list = document.getElementById('players');
-  // pequeño endpoint no hecho: leemos directo desde DB via teams? (para simplificar, traemos por público)
-  const r = await fetch(`${API}/tournaments/1/teams`,{headers:{'Authorization':'Bearer '+token}});
-  const teams = await r.json();
-  const me = teams.find(t=> t.id==teamId);
-  document.getElementById('teamTitle').textContent = (me?.emoji||'⚽')+' '+(me?.name||'Mi Equipo');
+function resolveTeamId() {
+  const stored = localStorage.getItem('team_id');
+  if (stored) {
+    const parsed = parseInt(stored, 10);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user?.team_id) return user.team_id;
+  } catch (e) {
+    console.warn('No se pudo leer el usuario almacenado', e);
+  }
+  return null;
+}
 
-  // Pedimos jugadores de ese equipo
-  const resp = await fetch(`${location.origin}/api/raw/players?team=${teamId}`).catch(()=>null);
-  // Fallback si no existe el endpoint (lo evitamos generando uno simple abajo en server? lo haremos simple)
+const teamId = resolveTeamId();
+
+async function agregar() {
+  if (!teamId) {
+    alert('No tenés un equipo asignado todavía.');
+    return;
+  }
+  const name = document.getElementById('pname').value.trim();
+  const number = parseInt(document.getElementById('pnum').value || '0', 10);
+  const position = document.getElementById('ppos').value;
+  if (!name) {
+    alert('Ingresá el nombre del jugador');
+    return;
+  }
+  const response = await fetch(`${API}/tournaments/teams/${teamId}/players`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + token,
+    },
+    body: JSON.stringify({ name, number: Number.isNaN(number) ? null : number, position }),
+  });
+  const data = await response.json();
+  if (data.id) {
+    document.getElementById('pname').value = '';
+    document.getElementById('pnum').value = '';
+    listar();
+  } else {
+    alert(data.error || 'No se pudo agregar el jugador');
+  }
+}
+
+function renderEmptyState(message) {
+  const list = document.getElementById('players');
+  list.innerHTML = `<div class="empty">${message}</div>`;
+}
+
+async function listar() {
+  if (!teamId) {
+    renderEmptyState('No tenés un equipo asignado todavía.');
+    return;
+  }
+  const list = document.getElementById('players');
+  list.innerHTML = '<div class="small">Cargando jugadores...</div>';
+  try {
+    const resp = await fetch(`${API}/raw/teams/${teamId}`);
+    if (!resp.ok) {
+      throw new Error('Respuesta no válida');
+    }
+    const { team, players } = await resp.json();
+    const title = document.getElementById('teamTitle');
+    if (team) {
+      title.textContent = `${team.emoji || '⚽'} ${team.name}`;
+    }
+    if (!players.length) {
+      renderEmptyState('Todavía no hay jugadores cargados.');
+      return;
+    }
+    list.innerHTML = '';
+    players.forEach((player) => {
+      const item = document.createElement('div');
+      item.className = 'item';
+      const hasNumber = player.number !== null && player.number !== undefined;
+      const numberLabel = hasNumber ? `#${player.number}` : 'S/N';
+      item.innerHTML = `
+        <div>
+          <strong>${player.name}</strong>
+          <div class="small">${numberLabel} • ${player.position || 'Sin posición'}</div>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+  } catch (error) {
+    console.error('Error al cargar jugadores', error);
+    renderEmptyState('No se pudieron cargar los jugadores.');
+  }
 }
 
 window.addEventListener('load', listar);
