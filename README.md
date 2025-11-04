@@ -11,9 +11,6 @@ Proyecto completo con **Node.js + MySQL** y **Frontend simple (HTML, CSS, JS)**.
    source sql/schema.sql;
    source sql/seed.sql;
    ```
-   > Si ya tenés una base `golapp` creada con una estructura antigua, ejecutá además
-   > `sql/migrations/20240611_align_existing_schema.sql` para agregar las columnas nuevas
-   > usadas por el panel de administración.
 2. Copiar `.env.example` a `.env` y ajustar credenciales (host, usuario, contraseña y nombre de la base).
 3. Instalar dependencias:
    ```bash
