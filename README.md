@@ -11,7 +11,7 @@ Proyecto completo con **Node.js + MySQL** y **Frontend simple (HTML, CSS, JS)**.
    source sql/schema.sql;
    source sql/seed.sql;
    ```
-2. Copiar `.env.example` a `.env` y ajustar credenciales.
+2. Copiar `.env.example` a `.env` y ajustar credenciales (host, usuario, contraseña y nombre de la base).
 3. Instalar dependencias:
    ```bash
    npm install
@@ -38,6 +38,14 @@ Proyecto completo con **Node.js + MySQL** y **Frontend simple (HTML, CSS, JS)**.
 - Vista pública (próximos partidos, tabla).
 
 > Todo el código está **comentado**, pensado para ser fácil de modificar.
+
+## Variables de entorno
+
+- **DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME**: credenciales de tu servidor MySQL. Por defecto el proyecto intentará conectarse a `root@localhost:3306/golapp` tal como está definido en los scripts de `sql/`.
+- **JWT_SECRET**: clave utilizada para firmar los tokens. Recordá cambiarla en tu `.env` antes de desplegar.
+- **PORT** _(opcional)_: puerto donde Express levantará la app. Si no lo definís usa `3000`.
+
+Cuando inicies el servidor verás un mensaje de verificación de la conexión a MySQL. Si hay un error, revisá la configuración anterior y asegurate de que la base exista (`sql/schema.sql`).
 
 ## Cómo subir los cambios a GitHub
 1. Configurá el remoto (solo la primera vez):
