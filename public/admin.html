@@ -18,7 +18,7 @@
       <button class="active" onclick="mostrarSeccion('torneos')">Torneos</button>
       <button onclick="mostrarSeccion('capitanes')">Capitanes</button>
       <button onclick="mostrarSeccion('equipos')">Equipos</button>
-      <button onclick="mostrarSeccion('partidos')">Próximos Partidos</button>
+      <button onclick="mostrarSeccion('partidos')">Partidos / Resultados</button>
     </div>
 
     <!-- 🏆 SECCIÓN TORNEOS -->
@@ -27,9 +27,12 @@
 
       <!-- Formulario para crear torneo -->
       <form id="formTorneo" onsubmit="crearTorneo(event)">
-        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="form-row" style="grid-template-columns:1fr 1fr;">
           <input type="text" id="torneoName" placeholder="Nombre del torneo" required>
-          <input type="number" id="torneoSeason" placeholder="Año (2025)" required>
+          <input type="number" id="torneoSeason" placeholder="Temporada (2025)" required>
+        </div>
+        <div class="form-row" style="grid-template-columns:1fr 1fr;">
+          <input type="number" id="torneoRounds" placeholder="Cantidad de fechas" min="1" required>
           <input type="date" id="torneoStart" required>
         </div>
         <div class="form-row" style="grid-template-columns:1fr 1fr;">
@@ -45,6 +48,7 @@
           <tr>
             <th>Nombre</th>
             <th>Temporada</th>
+            <th>Fechas</th>
             <th>Estado</th>
             <th>Acciones</th>
           </tr>
@@ -57,7 +61,7 @@
     <div id="seccion-capitanes" class="card" style="display:none">
       <h3>Capitanes</h3>
       <form id="formCapitan" onsubmit="crearCapitan(event)">
-        <div class="form-row">
+        <div class="form-row" style="grid-template-columns:repeat(4,1fr);">
           <input type="text" id="capName" placeholder="Nombre completo" required>
           <input type="email" id="capEmail" placeholder="Email" required>
           <input type="password" id="capPass" placeholder="Contraseña" required>
@@ -72,7 +76,7 @@
     <div id="seccion-equipos" class="card" style="display:none">
       <h3>Equipos</h3>
       <form id="formEquipo" onsubmit="crearEquipo(event)">
-        <div class="form-row">
+        <div class="form-row" style="grid-template-columns:2fr 1fr 1fr;">
           <input type="text" id="eqNombre" placeholder="Nombre del equipo" required>
           <input type="text" id="eqEmoji" placeholder="Emoji (⚽)">
           <select id="eqTorneo" required></select>
@@ -82,11 +86,35 @@
       <div id="listaEquipos" class="list"></div>
     </div>
 
-    <!-- 📅 SECCIÓN PRÓXIMOS PARTIDOS -->
+    <!-- 📅 SECCIÓN PARTIDOS -->
     <div id="seccion-partidos" class="card" style="display:none">
-      <h3>Próximos Partidos</h3>
-      <select id="partidosTorneo" onchange="cargarPartidos()"></select>
-      <div id="listaPartidos" class="list"></div>
+      <h3>Partidos y Resultados</h3>
+      <div class="form-row" style="grid-template-columns:1fr;">
+        <select id="partidosTorneo" onchange="cargarPartidos()"></select>
+      </div>
+      <div class="results-grid">
+        <div>
+          <h4>Próximos partidos</h4>
+          <div id="listaPartidos" class="list"></div>
+        </div>
+        <div>
+          <h4>Cargar resultado</h4>
+          <div class="table-responsive">
+            <table class="table" id="tablaResultados">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Ronda</th>
+                  <th>Partido</th>
+                  <th>Marcador</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -100,13 +128,19 @@
       <div>
         <div class="form-row" style="grid-template-columns:1fr 1fr;">
           <input type="text" id="editName" placeholder="Nombre del torneo" required>
-          <input type="number" id="editSeason" placeholder="Año (2025)" required>
+          <input type="number" id="editSeason" placeholder="Temporada" required>
         </div>
-        <div class="form-row" style="grid-template-columns:1fr;">
+        <div class="form-row" style="grid-template-columns:1fr 1fr;">
           <select id="editStatus">
             <option value="active">Activo</option>
             <option value="finished">Finalizado</option>
           </select>
+          <input type="number" id="editRounds" placeholder="Cantidad de fechas" min="1" required>
+        </div>
+        <div class="form-row" style="grid-template-columns:repeat(3,1fr);">
+          <input type="date" id="editStart">
+          <input type="time" id="editTime">
+          <input type="text" id="editLocation" placeholder="Cancha">
         </div>
       </div>
       <footer>
@@ -116,11 +150,11 @@
     </div>
   </div>
 
-  <!-- MODAL: Generar Fixture -->
+  <!-- MODAL: Regenerar Fixture manualmente -->
   <div id="modalFixture" class="modal-backdrop">
     <div class="modal">
       <header>
-        <h3>Generar Fixture</h3>
+        <h3>Regenerar Fixture</h3>
         <button class="btn gray" type="button" onclick="closeFixtureModal()">✕</button>
       </header>
       <div>
@@ -131,11 +165,60 @@
         <div class="form-row" style="grid-template-columns:1fr;">
           <input type="text" id="fxLocation" placeholder="Cancha / ubicación" required>
         </div>
-        <p class="small">El fixture se arma automáticamente si hay al menos 2 equipos.</p>
+        <p class="small">Se eliminarán los partidos existentes y se creará nuevamente el fixture.</p>
       </div>
       <footer>
         <button class="btn gray" type="button" onclick="closeFixtureModal()">Cancelar</button>
-        <button class="btn primary" type="button" onclick="submitGenerateFixture()">Generar</button>
+        <button class="btn primary" type="button" onclick="submitGenerateFixture()">Regenerar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- MODAL: Editar Equipo -->
+  <div id="modalTeam" class="modal-backdrop">
+    <div class="modal">
+      <header>
+        <h3>Editar Equipo</h3>
+        <button class="btn gray" type="button" onclick="closeTeamModal()">✕</button>
+      </header>
+      <div>
+        <div class="form-row" style="grid-template-columns:1fr 1fr;">
+          <input type="text" id="editTeamName" placeholder="Nombre" required>
+          <input type="text" id="editTeamEmoji" placeholder="Emoji">
+        </div>
+        <div class="form-row" style="grid-template-columns:1fr;">
+          <select id="editTeamCaptain">
+            <option value="">Sin capitán asignado</option>
+          </select>
+        </div>
+      </div>
+      <footer>
+        <button class="btn gray" type="button" onclick="closeTeamModal()">Cancelar</button>
+        <button class="btn primary" type="button" onclick="submitEditTeam()">Guardar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- MODAL: Editar Capitán -->
+  <div id="modalCaptain" class="modal-backdrop">
+    <div class="modal">
+      <header>
+        <h3>Editar Capitán</h3>
+        <button class="btn gray" type="button" onclick="closeCaptainModal()">✕</button>
+      </header>
+      <div>
+        <div class="form-row" style="grid-template-columns:1fr 1fr;">
+          <input type="text" id="editCaptainName" placeholder="Nombre" required>
+          <input type="email" id="editCaptainEmail" placeholder="Email" required>
+        </div>
+        <div class="form-row" style="grid-template-columns:1fr 1fr;">
+          <input type="password" id="editCaptainPassword" placeholder="Nueva contraseña (opcional)">
+          <select id="editCaptainTeam"></select>
+        </div>
+      </div>
+      <footer>
+        <button class="btn gray" type="button" onclick="closeCaptainModal()">Cancelar</button>
+        <button class="btn primary" type="button" onclick="submitEditCaptain()">Guardar</button>
       </footer>
     </div>
   </div>
@@ -143,3 +226,5 @@
   <!-- Script principal -->
   <script src="js/admin.js"></script>
 </body>
+
+</html>

@@ -1,0 +1,1609 @@
+diff --git a/README.md b/README.md
+index 4131960..54e3e62 100644
+--- a/README.md
++++ b/README.md
+@@ -38,3 +38,27 @@ Proyecto completo con **Node.js + MySQL** y **Frontend simple (HTML, CSS, JS)**.
+ - Vista pública (próximos partidos, tabla).
+ 
+ > Todo el código está **comentado**, pensado para ser fácil de modificar.
++
++## Cómo subir los cambios a GitHub
++1. Configurá el remoto (solo la primera vez):
++   ```bash
++   git remote add origin git@github.com:TU_USUARIO/TU_REPO.git
++   ```
++2. Verificá el estado del repositorio y agregá los archivos que quieras publicar:
++   ```bash
++   git status
++   git add .
++   ```
++3. Creá un commit con un mensaje descriptivo:
++   ```bash
++   git commit -m "Describe tu cambio"
++   ```
++4. Empujá la rama actual al repositorio remoto:
++   ```bash
++   git push origin NOMBRE_DE_LA_RAMA
++   ```
++   Si es la primera vez que subís esta rama podés usar `-u` para dejarla configurada como upstream:
++   ```bash
++   git push -u origin NOMBRE_DE_LA_RAMA
++   ```
++5. Creá el Pull Request desde GitHub o, si ya está configurado, seguí trabajando y repetí el flujo cuando tengas más cambios.
+diff --git a/public/admin.html b/public/admin.html
+index c715f00..5010ddd 100644
+--- a/public/admin.html
++++ b/public/admin.html
+@@ -18,7 +18,7 @@
+       <button class="active" onclick="mostrarSeccion('torneos')">Torneos</button>
+       <button onclick="mostrarSeccion('capitanes')">Capitanes</button>
+       <button onclick="mostrarSeccion('equipos')">Equipos</button>
+-      <button onclick="mostrarSeccion('partidos')">Próximos Partidos</button>
++      <button onclick="mostrarSeccion('partidos')">Partidos / Resultados</button>
+     </div>
+ 
+     <!-- 🏆 SECCIÓN TORNEOS -->
+@@ -27,9 +27,12 @@
+ 
+       <!-- Formulario para crear torneo -->
+       <form id="formTorneo" onsubmit="crearTorneo(event)">
+-        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
++        <div class="form-row" style="grid-template-columns:1fr 1fr;">
+           <input type="text" id="torneoName" placeholder="Nombre del torneo" required>
+-          <input type="number" id="torneoSeason" placeholder="Año (2025)" required>
++          <input type="number" id="torneoSeason" placeholder="Temporada (2025)" required>
++        </div>
++        <div class="form-row" style="grid-template-columns:1fr 1fr;">
++          <input type="number" id="torneoRounds" placeholder="Cantidad de fechas" min="1" required>
+           <input type="date" id="torneoStart" required>
+         </div>
+         <div class="form-row" style="grid-template-columns:1fr 1fr;">
+@@ -45,6 +48,7 @@
+           <tr>
+             <th>Nombre</th>
+             <th>Temporada</th>
++            <th>Fechas</th>
+             <th>Estado</th>
+             <th>Acciones</th>
+           </tr>
+@@ -57,7 +61,7 @@
+     <div id="seccion-capitanes" class="card" style="display:none">
+       <h3>Capitanes</h3>
+       <form id="formCapitan" onsubmit="crearCapitan(event)">
+-        <div class="form-row">
++        <div class="form-row" style="grid-template-columns:repeat(4,1fr);">
+           <input type="text" id="capName" placeholder="Nombre completo" required>
+           <input type="email" id="capEmail" placeholder="Email" required>
+           <input type="password" id="capPass" placeholder="Contraseña" required>
+@@ -72,7 +76,7 @@
+     <div id="seccion-equipos" class="card" style="display:none">
+       <h3>Equipos</h3>
+       <form id="formEquipo" onsubmit="crearEquipo(event)">
+-        <div class="form-row">
++        <div class="form-row" style="grid-template-columns:2fr 1fr 1fr;">
+           <input type="text" id="eqNombre" placeholder="Nombre del equipo" required>
+           <input type="text" id="eqEmoji" placeholder="Emoji (⚽)">
+           <select id="eqTorneo" required></select>
+@@ -82,11 +86,35 @@
+       <div id="listaEquipos" class="list"></div>
+     </div>
+ 
+-    <!-- 📅 SECCIÓN PRÓXIMOS PARTIDOS -->
++    <!-- 📅 SECCIÓN PARTIDOS -->
+     <div id="seccion-partidos" class="card" style="display:none">
+-      <h3>Próximos Partidos</h3>
+-      <select id="partidosTorneo" onchange="cargarPartidos()"></select>
+-      <div id="listaPartidos" class="list"></div>
++      <h3>Partidos y Resultados</h3>
++      <div class="form-row" style="grid-template-columns:1fr;">
++        <select id="partidosTorneo" onchange="cargarPartidos()"></select>
++      </div>
++      <div class="results-grid">
++        <div>
++          <h4>Próximos partidos</h4>
++          <div id="listaPartidos" class="list"></div>
++        </div>
++        <div>
++          <h4>Cargar resultado</h4>
++          <div class="table-responsive">
++            <table class="table" id="tablaResultados">
++              <thead>
++                <tr>
++                  <th>Fecha</th>
++                  <th>Ronda</th>
++                  <th>Partido</th>
++                  <th>Marcador</th>
++                  <th></th>
++                </tr>
++              </thead>
++              <tbody></tbody>
++            </table>
++          </div>
++        </div>
++      </div>
+     </div>
+   </div>
+ 
+@@ -100,13 +128,19 @@
+       <div>
+         <div class="form-row" style="grid-template-columns:1fr 1fr;">
+           <input type="text" id="editName" placeholder="Nombre del torneo" required>
+-          <input type="number" id="editSeason" placeholder="Año (2025)" required>
++          <input type="number" id="editSeason" placeholder="Temporada" required>
+         </div>
+-        <div class="form-row" style="grid-template-columns:1fr;">
++        <div class="form-row" style="grid-template-columns:1fr 1fr;">
+           <select id="editStatus">
+             <option value="active">Activo</option>
+             <option value="finished">Finalizado</option>
+           </select>
++          <input type="number" id="editRounds" placeholder="Cantidad de fechas" min="1" required>
++        </div>
++        <div class="form-row" style="grid-template-columns:repeat(3,1fr);">
++          <input type="date" id="editStart">
++          <input type="time" id="editTime">
++          <input type="text" id="editLocation" placeholder="Cancha">
+         </div>
+       </div>
+       <footer>
+@@ -116,11 +150,11 @@
+     </div>
+   </div>
+ 
+-  <!-- MODAL: Generar Fixture -->
++  <!-- MODAL: Regenerar Fixture manualmente -->
+   <div id="modalFixture" class="modal-backdrop">
+     <div class="modal">
+       <header>
+-        <h3>Generar Fixture</h3>
++        <h3>Regenerar Fixture</h3>
+         <button class="btn gray" type="button" onclick="closeFixtureModal()">✕</button>
+       </header>
+       <div>
+@@ -131,11 +165,60 @@
+         <div class="form-row" style="grid-template-columns:1fr;">
+           <input type="text" id="fxLocation" placeholder="Cancha / ubicación" required>
+         </div>
+-        <p class="small">El fixture se arma automáticamente si hay al menos 2 equipos.</p>
++        <p class="small">Se eliminarán los partidos existentes y se creará nuevamente el fixture.</p>
+       </div>
+       <footer>
+         <button class="btn gray" type="button" onclick="closeFixtureModal()">Cancelar</button>
+-        <button class="btn primary" type="button" onclick="submitGenerateFixture()">Generar</button>
++        <button class="btn primary" type="button" onclick="submitGenerateFixture()">Regenerar</button>
++      </footer>
++    </div>
++  </div>
++
++  <!-- MODAL: Editar Equipo -->
++  <div id="modalTeam" class="modal-backdrop">
++    <div class="modal">
++      <header>
++        <h3>Editar Equipo</h3>
++        <button class="btn gray" type="button" onclick="closeTeamModal()">✕</button>
++      </header>
++      <div>
++        <div class="form-row" style="grid-template-columns:1fr 1fr;">
++          <input type="text" id="editTeamName" placeholder="Nombre" required>
++          <input type="text" id="editTeamEmoji" placeholder="Emoji">
++        </div>
++        <div class="form-row" style="grid-template-columns:1fr;">
++          <select id="editTeamCaptain">
++            <option value="">Sin capitán asignado</option>
++          </select>
++        </div>
++      </div>
++      <footer>
++        <button class="btn gray" type="button" onclick="closeTeamModal()">Cancelar</button>
++        <button class="btn primary" type="button" onclick="submitEditTeam()">Guardar</button>
++      </footer>
++    </div>
++  </div>
++
++  <!-- MODAL: Editar Capitán -->
++  <div id="modalCaptain" class="modal-backdrop">
++    <div class="modal">
++      <header>
++        <h3>Editar Capitán</h3>
++        <button class="btn gray" type="button" onclick="closeCaptainModal()">✕</button>
++      </header>
++      <div>
++        <div class="form-row" style="grid-template-columns:1fr 1fr;">
++          <input type="text" id="editCaptainName" placeholder="Nombre" required>
++          <input type="email" id="editCaptainEmail" placeholder="Email" required>
++        </div>
++        <div class="form-row" style="grid-template-columns:1fr 1fr;">
++          <input type="password" id="editCaptainPassword" placeholder="Nueva contraseña (opcional)">
++          <select id="editCaptainTeam"></select>
++        </div>
++      </div>
++      <footer>
++        <button class="btn gray" type="button" onclick="closeCaptainModal()">Cancelar</button>
++        <button class="btn primary" type="button" onclick="submitEditCaptain()">Guardar</button>
+       </footer>
+     </div>
+   </div>
+@@ -143,3 +226,5 @@
+   <!-- Script principal -->
+   <script src="js/admin.js"></script>
+ </body>
++
++</html>
+diff --git a/public/css/style.css b/public/css/style.css
+index 09f45af..76e2276 100644
+--- a/public/css/style.css
++++ b/public/css/style.css
+@@ -157,7 +157,9 @@ body{
+   box-shadow:var(--shadow);
+   display:flex;
+   align-items:center;
+-  justify-content:space-between
++  justify-content:space-between;
++  gap:12px;
++  flex-wrap:wrap
+ }
+ 
+ .item .teams{
+@@ -209,8 +211,8 @@ input[type="text"], input[type="number"], input[type="date"], input[type="passwo
+ 
+ .form-row{
+   display:grid;
+-  grid-template-rows:1fr 1fr 1fr;
+   gap:12px;
++  grid-template-columns:1fr;
+ }
+ 
+ .kpis{
+@@ -270,3 +272,31 @@ input, select { margin-bottom: 8px; }
+ .badge-sm{
+   background:#eef6ff; color:#1976d2; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:600;
+ }
++
++.table-responsive{
++  max-height:420px;
++  overflow:auto;
++}
++
++.results-grid{
++  display:grid;
++  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
++  gap:20px;
++  margin-top:16px;
++}
++
++.list .actions{
++  display:flex;
++  gap:8px;
++}
++
++.result-inputs{
++  display:flex;
++  align-items:center;
++  gap:6px;
++}
++
++.input-small{
++  width:60px;
++  padding:6px 8px;
++}
+diff --git a/public/js/admin.js b/public/js/admin.js
+index f22a98e..9348797 100644
+--- a/public/js/admin.js
++++ b/public/js/admin.js
+@@ -2,9 +2,22 @@ const API = location.origin + '/api';
+ const token = localStorage.getItem('token');
+ if (!token) location.href = 'index.html';
+ 
+-// Estado de modales
+ let editTournamentId = null;
+ let fixtureTournamentId = null;
++let editTeamId = null;
++let editCaptainId = null;
++
++let torneosCache = [];
++let teamsCache = [];
++let captainsCache = [];
++let matchesCache = [];
++
++const teamStore = new Map();
++const captainStore = new Map();
++
++function authHeaders() {
++  return { 'Authorization': 'Bearer ' + token };
++}
+ 
+ /* ---------------------- NAVEGACIÓN ENTRE SECCIONES ---------------------- */
+ function mostrarSeccion(nombre) {
+@@ -20,24 +33,40 @@ function mostrarSeccion(nombre) {
+ }
+ 
+ /* ---------------------------- 🏆 TORNEOS ---------------------------- */
+-async function cargarTorneos() {
+-  const r = await fetch(API + '/tournaments', { headers: { 'Authorization': 'Bearer ' + token } });
+-  const data = await r.json();
++async function obtenerTorneos(force = false) {
++  if (!force && torneosCache.length) return torneosCache;
++  const r = await fetch(API + '/tournaments', { headers: authHeaders() });
++  if (!r.ok) {
++    alert('No se pudieron cargar los torneos');
++    return [];
++  }
++  torneosCache = await r.json();
++  return torneosCache;
++}
+ 
++async function cargarTorneos(force = true) {
++  const torneos = await obtenerTorneos(force);
+   const tbody = document.querySelector('#tablaTorneos tbody');
+   tbody.innerHTML = '';
+ 
+-  for (const t of data) {
++  if (!torneos.length) {
+     const tr = document.createElement('tr');
+-    tr.innerHTML = `
+-      <td>${t.name}</td>
+-      <td>${t.season}</td>
+-      <td><span class="badge-sm">${t.status}</span></td>
+-      <td>
+-        <button class="btn" onclick="openEditModal(${t.id}, '${t.name.replace(/'/g,"\\'")}', ${t.season}, '${t.status}')">Editar</button>
+-        <button class="btn primary" onclick="openFixtureModal(${t.id})">Fixture</button>
+-      </td>`;
++    tr.innerHTML = '<td colspan="5" class="small">Todavía no creaste torneos.</td>';
+     tbody.appendChild(tr);
++  } else {
++    torneos.forEach(t => {
++      const tr = document.createElement('tr');
++      tr.innerHTML = `
++        <td>${t.name}</td>
++        <td>${t.season}</td>
++        <td>${t.total_rounds || '-'}</td>
++        <td><span class="badge-sm">${t.status}</span></td>
++        <td>
++          <button class="btn" onclick="openEditModal(${t.id})">Editar</button>
++          <button class="btn primary" onclick="openFixtureModal(${t.id})">Regenerar fixture</button>
++        </td>`;
++      tbody.appendChild(tr);
++    });
+   }
+ 
+   cargarTorneosEnSelects();
+@@ -45,178 +74,337 @@ async function cargarTorneos() {
+ 
+ async function crearTorneo(e) {
+   e.preventDefault();
+-  const name = document.getElementById('torneoName').value;
++  const name = document.getElementById('torneoName').value.trim();
+   const season = document.getElementById('torneoSeason').value;
++  const rounds = parseInt(document.getElementById('torneoRounds').value, 10);
+   const startDate = document.getElementById('torneoStart').value;
+-  const time = document.getElementById('torneoTime').value + ':00';
+-  const location = document.getElementById('torneoCancha').value;
++  const timeInput = document.getElementById('torneoTime').value;
++  const matchTime = timeInput ? `${timeInput}:00` : null;
++  const location = document.getElementById('torneoCancha').value.trim();
+ 
+   const r = await fetch(API + '/tournaments', {
+     method: 'POST',
+-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+-    body: JSON.stringify({ name, season })
++    headers: { 'Content-Type': 'application/json', ...authHeaders() },
++    body: JSON.stringify({ name, season, rounds, startDate, matchTime, location })
+   });
+   const d = await r.json();
+ 
+-  if (d.id) {
+-    await fetch(`${API}/tournaments/${d.id}/generate-fixture`, {
+-      method: 'POST',
+-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+-      body: JSON.stringify({ startDate, time, location })
+-    });
+-    alert('Torneo creado y fixture generado');
+-    cargarTorneos();
++  if (r.ok) {
++    alert('Torneo creado');
++    document.getElementById('formTorneo').reset();
++    cargarTorneos(true);
+   } else {
+     alert(d.error || 'Error al crear torneo');
+   }
+ }
+ 
+-/* ----------- Modal Editar Torneo ----------- */
+-function openEditModal(id, name, season, status){
++function openEditModal(id) {
++  const torneo = torneosCache.find(t => t.id === id);
++  if (!torneo) return;
+   editTournamentId = id;
+-  
+-  // Previene valores null
+-  document.getElementById('editName').value = name ?? '';
+-  document.getElementById('editSeason').value = season ?? new Date().getFullYear();
+-  document.getElementById('editStatus').value = status ?? 'active';
+-  
++  document.getElementById('editName').value = torneo.name || '';
++  document.getElementById('editSeason').value = torneo.season || new Date().getFullYear();
++  document.getElementById('editStatus').value = torneo.status || 'active';
++  document.getElementById('editRounds').value = torneo.total_rounds || 1;
++  document.getElementById('editStart').value = torneo.start_date ? torneo.start_date.slice(0, 10) : '';
++  document.getElementById('editTime').value = torneo.match_time ? torneo.match_time.slice(0, 5) : '';
++  document.getElementById('editLocation').value = torneo.location || '';
++
+   document.getElementById('modalEdit').style.display = 'flex';
+ }
+ 
+-function closeEditModal(){
++function closeEditModal() {
+   document.getElementById('modalEdit').style.display = 'none';
+   editTournamentId = null;
+ }
+-async function submitEditTournament(){
+-  const nameField = document.getElementById('editName');
+-  const seasonField = document.getElementById('editSeason');
+-  const statusField = document.getElementById('editStatus');
+ 
+-  const name = nameField?.value.trim() || '';
+-  const season = seasonField?.value.trim() || '';
+-  const status = statusField?.value || 'active';
+-
+-  if(!editTournamentId || !name || !season){
+-    alert('Por favor completá todos los campos antes de guardar.');
+-    return;
+-  }
++async function submitEditTournament() {
++  if (!editTournamentId) return;
++  const name = document.getElementById('editName').value.trim();
++  const season = document.getElementById('editSeason').value;
++  const status = document.getElementById('editStatus').value;
++  const total_rounds = parseInt(document.getElementById('editRounds').value, 10);
++  const start_date = document.getElementById('editStart').value || null;
++  const timeVal = document.getElementById('editTime').value;
++  const match_time = timeVal ? `${timeVal}:00` : null;
++  const location = document.getElementById('editLocation').value.trim();
++
++  const r = await fetch(`${API}/tournaments/${editTournamentId}`, {
++    method: 'PUT',
++    headers: { 'Content-Type': 'application/json', ...authHeaders() },
++    body: JSON.stringify({ name, season, status, total_rounds, start_date, match_time, location })
++  });
++  const d = await r.json();
+ 
+-  try {
+-    const r = await fetch(API + '/tournaments/' + editTournamentId, {
+-      method: 'PUT',
+-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+-      body: JSON.stringify({ name, season, status })
+-    });
+-    const d = await r.json();
+-    if(d.ok){
+-      closeEditModal();
+-      cargarTorneos();
+-      alert('Torneo actualizado con éxito');
+-    } else {
+-      alert(d.error || 'Error al actualizar el torneo');
+-    }
+-  } catch (err) {
+-    console.error('Error al enviar actualización:', err);
+-    alert('Error de conexión con el servidor.');
++  if (r.ok && d.ok) {
++    closeEditModal();
++    await cargarTorneos(true);
++    alert('Torneo actualizado con éxito');
++  } else {
++    alert(d.error || 'Error al actualizar el torneo');
+   }
+ }
+ 
+-
+-/* ----------- Modal Generar Fixture ----------- */
+-function openFixtureModal(id){
++function openFixtureModal(id) {
++  const torneo = torneosCache.find(t => t.id === id);
++  if (!torneo) return;
+   fixtureTournamentId = id;
+-  document.getElementById('fxStart').value = new Date().toISOString().slice(0,10);
+-  document.getElementById('fxTime').value = '16:00';
+-  document.getElementById('fxLocation').value = 'Cancha A';
++  document.getElementById('fxStart').value = (torneo.start_date || new Date().toISOString().slice(0, 10));
++  document.getElementById('fxTime').value = torneo.match_time ? torneo.match_time.slice(0, 5) : '16:00';
++  document.getElementById('fxLocation').value = torneo.location || 'Cancha A';
+   document.getElementById('modalFixture').style.display = 'flex';
+ }
+-function closeFixtureModal(){
++
++function closeFixtureModal() {
+   document.getElementById('modalFixture').style.display = 'none';
+   fixtureTournamentId = null;
+ }
+-async function submitGenerateFixture(){
++
++async function submitGenerateFixture() {
++  if (!fixtureTournamentId) return;
+   const startDate = document.getElementById('fxStart').value;
+-  const time = document.getElementById('fxTime').value + ':00';
++  const timeVal = document.getElementById('fxTime').value;
++  const time = timeVal ? `${timeVal}:00` : '16:00:00';
+   const location = document.getElementById('fxLocation').value.trim();
+ 
+-  if(!fixtureTournamentId || !startDate || !time || !location){
+-    return alert('Completá todos los campos');
+-  }
+-
+   const r = await fetch(`${API}/tournaments/${fixtureTournamentId}/generate-fixture`, {
+-    method:'POST',
+-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+     body: JSON.stringify({ startDate, time, location })
+   });
+   const d = await r.json();
+-  if(d.ok){
++
++  if (r.ok && d.ok) {
+     closeFixtureModal();
+-    alert(`Fixture generado (${d.rounds} fechas)`);
++    alert(`Fixture regenerado (${d.rounds} fechas)`);
++    cargarPartidos();
+   } else {
+-    alert(d.error || 'No se pudo generar el fixture (verifica que existan 2+ equipos)');
++    alert(d.error || 'No se pudo regenerar el fixture');
+   }
+ }
+ 
+ /* ---------------------------- ⚽ EQUIPOS ---------------------------- */
++async function fetchTeams(force = false) {
++  if (!force && teamsCache.length) return teamsCache;
++  const torneos = await obtenerTorneos();
++  if (!torneos.length) {
++    teamsCache = [];
++    teamStore.clear();
++    return teamsCache;
++  }
++  const lists = await Promise.all(torneos.map(async t => {
++    const r = await fetch(`${API}/tournaments/${t.id}/teams`, { headers: authHeaders() });
++    if (!r.ok) return [];
++    const teams = await r.json();
++    return teams.map(team => ({ ...team, tournament_id: t.id, tournament_name: t.name }));
++  }));
++  teamsCache = lists.flat();
++  teamStore.clear();
++  teamsCache.forEach(team => teamStore.set(team.id, team));
++  return teamsCache;
++}
++
+ async function cargarEquipos() {
++  const torneos = await obtenerTorneos();
++  await fetchTeams(true);
+   const eqList = document.getElementById('listaEquipos');
+   eqList.innerHTML = '';
+-  const torneos = await obtenerTorneos();
+ 
+-  for (const t of torneos) {
+-    const r = await fetch(API + '/tournaments/' + t.id + '/teams', { headers: { 'Authorization': 'Bearer ' + token } });
+-    const teams = await r.json();
+-    eqList.innerHTML += `<h4>${t.name}</h4>`;
+-    teams.forEach(e => {
+-      eqList.innerHTML += `<div class="item"><span>${e.emoji}</span> ${e.name}</div>`;
+-    });
++  if (!torneos.length) {
++    eqList.innerHTML = '<p class="small">No hay torneos disponibles.</p>';
++    return;
+   }
++
++  torneos.forEach(t => {
++    const title = document.createElement('h4');
++    title.textContent = t.name;
++    eqList.appendChild(title);
++    const teams = teamsCache.filter(team => team.tournament_id === t.id);
++    if (!teams.length) {
++      const empty = document.createElement('p');
++      empty.className = 'small';
++      empty.textContent = 'Sin equipos cargados.';
++      eqList.appendChild(empty);
++    } else {
++      teams.forEach(team => {
++        const item = document.createElement('div');
++        item.className = 'item';
++        const info = document.createElement('div');
++        info.innerHTML = `<strong>${team.emoji || '⚽'} ${team.name}</strong><br><span class="small">Capitán: ${team.captain_name || 'No asignado'}</span>`;
++        const actions = document.createElement('div');
++        actions.className = 'actions';
++        actions.innerHTML = `<button class="btn" onclick="openTeamModal(${team.id})">Editar</button>`;
++        item.appendChild(info);
++        item.appendChild(actions);
++        eqList.appendChild(item);
++      });
++    }
++  });
++
+   cargarTorneosEnSelects();
+ }
+ 
+ async function crearEquipo(e) {
+   e.preventDefault();
+   const torneo = document.getElementById('eqTorneo').value;
+-  const name = document.getElementById('eqNombre').value;
+-  const emoji = document.getElementById('eqEmoji').value || '⚽';
++  const name = document.getElementById('eqNombre').value.trim();
++  const emoji = document.getElementById('eqEmoji').value.trim();
+ 
+-  const r = await fetch(API + `/tournaments/${torneo}/teams`, {
++  const r = await fetch(`${API}/tournaments/${torneo}/teams`, {
+     method: 'POST',
+-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
++    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+     body: JSON.stringify({ name, emoji })
+   });
+   const d = await r.json();
+ 
+-  if (d.id) {
+-    alert('Equipo creado');
+-    cargarEquipos();
++  if (r.ok && d.id) {
++    alert(d.fixtureGenerated ? `Equipo creado y fixture generado (${d.rounds} fechas)` : 'Equipo creado');
++    document.getElementById('formEquipo').reset();
++    await cargarEquipos();
++    await fetchCaptains(true);
++    if (document.getElementById('seccion-partidos').style.display !== 'none') {
++      cargarPartidos();
++    }
+   } else {
+     alert(d.error || 'Error al crear equipo');
+   }
+ }
+ 
++async function openTeamModal(id) {
++  const team = teamStore.get(id);
++  if (!team) return;
++  editTeamId = id;
++  document.getElementById('editTeamName').value = team.name || '';
++  document.getElementById('editTeamEmoji').value = team.emoji || '';
++
++  await fetchCaptains();
++  fillCaptainOptions(document.getElementById('editTeamCaptain'));
++  document.getElementById('editTeamCaptain').value = team.captain_user_id || '';
++
++  document.getElementById('modalTeam').style.display = 'flex';
++}
++
++function closeTeamModal() {
++  document.getElementById('modalTeam').style.display = 'none';
++  editTeamId = null;
++}
++
++async function submitEditTeam() {
++  if (!editTeamId) return;
++  const name = document.getElementById('editTeamName').value.trim();
++  const emoji = document.getElementById('editTeamEmoji').value.trim();
++  const captain_user_id = document.getElementById('editTeamCaptain').value || null;
++
++  const r = await fetch(`${API}/tournaments/teams/${editTeamId}`, {
++    method: 'PUT',
++    headers: { 'Content-Type': 'application/json', ...authHeaders() },
++    body: JSON.stringify({ name, emoji, captain_user_id })
++  });
++  const d = await r.json();
++  if (r.ok && d.ok) {
++    closeTeamModal();
++    await cargarEquipos();
++    await cargarCapitanes();
++    if (document.getElementById('seccion-partidos').style.display !== 'none') {
++      cargarPartidos();
++    }
++  } else {
++    alert(d.error || 'Error al actualizar equipo');
++  }
++}
++
+ /* ---------------------------- 👤 CAPITANES ---------------------------- */
++async function fetchCaptains(force = false) {
++  if (!force && captainsCache.length) return captainsCache;
++  const r = await fetch(`${API}/tournaments/captains`, { headers: authHeaders() });
++  if (!r.ok) {
++    captainsCache = [];
++    captainStore.clear();
++    return captainsCache;
++  }
++  captainsCache = await r.json();
++  captainStore.clear();
++  captainsCache.forEach(c => captainStore.set(c.id, c));
++  return captainsCache;
++}
++
++function fillTeamOptions(select, includeEmpty = false) {
++  select.innerHTML = '';
++  if (includeEmpty) {
++    const opt = document.createElement('option');
++    opt.value = '';
++    opt.textContent = 'Seleccionar equipo';
++    select.appendChild(opt);
++  }
++  const ordered = [...teamsCache].sort((a, b) => {
++    if (a.tournament_name === b.tournament_name) return a.name.localeCompare(b.name);
++    return a.tournament_name.localeCompare(b.tournament_name);
++  });
++  ordered.forEach(team => {
++    const opt = document.createElement('option');
++    opt.value = team.id;
++    opt.textContent = `${team.name} (${team.tournament_name})`;
++    select.appendChild(opt);
++  });
++}
++
++function fillCaptainOptions(select) {
++  select.innerHTML = '';
++  const base = document.createElement('option');
++  base.value = '';
++  base.textContent = 'Sin capitán asignado';
++  select.appendChild(base);
++  const ordered = [...captainsCache].sort((a, b) => a.name.localeCompare(b.name));
++  ordered.forEach(cap => {
++    const team = teamsCache.find(t => t.id === cap.team_id);
++    const label = team ? `${cap.name} (${team.name})` : cap.name;
++    const opt = document.createElement('option');
++    opt.value = cap.id;
++    opt.textContent = label;
++    select.appendChild(opt);
++  });
++}
++
+ async function cargarCapitanes() {
+-  const eqSelect = document.getElementById('capEquipo');
+-  eqSelect.innerHTML = '';
+-  const torneos = await obtenerTorneos();
++  await fetchTeams();
++  await fetchCaptains(true);
+ 
+-  for (const t of torneos) {
+-    const r = await fetch(API + '/tournaments/' + t.id + '/teams', { headers: { 'Authorization': 'Bearer ' + token } });
+-    const teams = await r.json();
+-    teams.forEach(e => {
+-      const opt = document.createElement('option');
+-      opt.value = e.id;
+-      opt.textContent = `${e.name} (${t.name})`;
+-      eqSelect.appendChild(opt);
++  const capSelect = document.getElementById('capEquipo');
++  if (teamsCache.length) {
++    capSelect.removeAttribute('disabled');
++    fillTeamOptions(capSelect);
++  } else {
++    capSelect.innerHTML = '<option value="">No hay equipos disponibles</option>';
++    capSelect.setAttribute('disabled', 'disabled');
++  }
++
++  const list = document.getElementById('listaCapitanes');
++  list.innerHTML = '';
++  if (!captainsCache.length) {
++    list.innerHTML = '<p class="small">No hay capitanes registrados.</p>';
++  } else {
++    captainsCache.forEach(c => {
++      const item = document.createElement('div');
++      item.className = 'item';
++      const team = teamsCache.find(t => t.id === c.team_id);
++      const info = document.createElement('div');
++      info.innerHTML = `<strong>${c.name}</strong><br><span class="small">${c.email} • ${team ? team.name : 'Sin equipo'}</span>`;
++      const actions = document.createElement('div');
++      actions.className = 'actions';
++      actions.innerHTML = `<button class="btn" onclick="openCaptainModal(${c.id})">Editar</button>`;
++      item.appendChild(info);
++      item.appendChild(actions);
++      list.appendChild(item);
+     });
+   }
++
++  fillTeamOptions(document.getElementById('editCaptainTeam'), true);
+ }
+ 
+ async function crearCapitan(e) {
+   e.preventDefault();
+-  const name = document.getElementById('capName').value;
+-  const email = document.getElementById('capEmail').value;
++  const name = document.getElementById('capName').value.trim();
++  const email = document.getElementById('capEmail').value.trim();
+   const password = document.getElementById('capPass').value;
+   const team_id = document.getElementById('capEquipo').value;
+ 
+@@ -227,56 +415,166 @@ async function crearCapitan(e) {
+   });
+   const d = await r.json();
+ 
+-  if (d.token) {
++  if (r.ok && d.token) {
+     alert('Capitán creado con éxito');
+     document.getElementById('formCapitan').reset();
++    await fetchCaptains(true);
++    await cargarCapitanes();
++    await cargarEquipos();
+   } else {
+     alert(d.error || 'Error al crear capitán');
+   }
+ }
+ 
++async function openCaptainModal(id) {
++  const captain = captainStore.get(id);
++  if (!captain) return;
++  editCaptainId = id;
++  document.getElementById('editCaptainName').value = captain.name || '';
++  document.getElementById('editCaptainEmail').value = captain.email || '';
++  document.getElementById('editCaptainPassword').value = '';
++  fillTeamOptions(document.getElementById('editCaptainTeam'), true);
++  document.getElementById('editCaptainTeam').value = captain.team_id || '';
++  document.getElementById('modalCaptain').style.display = 'flex';
++}
++
++function closeCaptainModal() {
++  document.getElementById('modalCaptain').style.display = 'none';
++  editCaptainId = null;
++}
++
++async function submitEditCaptain() {
++  if (!editCaptainId) return;
++  const name = document.getElementById('editCaptainName').value.trim();
++  const email = document.getElementById('editCaptainEmail').value.trim();
++  const password = document.getElementById('editCaptainPassword').value;
++  const team_id = document.getElementById('editCaptainTeam').value || null;
++
++  const r = await fetch(`${API}/tournaments/captains/${editCaptainId}`, {
++    method: 'PUT',
++    headers: { 'Content-Type': 'application/json', ...authHeaders() },
++    body: JSON.stringify({ name, email, password: password || undefined, team_id })
++  });
++  const d = await r.json();
++  if (r.ok && d.ok) {
++    closeCaptainModal();
++    await fetchCaptains(true);
++    await cargarCapitanes();
++    await cargarEquipos();
++  } else {
++    alert(d.error || 'Error al actualizar capitán');
++  }
++}
++
+ /* ---------------------------- 📅 PARTIDOS ---------------------------- */
+ async function cargarPartidos() {
+   const torneos = await obtenerTorneos();
+   const select = document.getElementById('partidosTorneo');
+-  const lista = document.getElementById('listaPartidos');
+-
+-  if (select.options.length === 0) {
+-    torneos.forEach(t => {
+-      const opt = document.createElement('option');
+-      opt.value = t.id;
+-      opt.textContent = `${t.name} (${t.season})`;
+-      select.appendChild(opt);
+-    });
++  select.innerHTML = '';
++  if (!torneos.length) {
++    select.innerHTML = '<option value="">No hay torneos</option>';
++    document.getElementById('listaPartidos').innerHTML = '<p class="small">Sin datos</p>';
++    document.querySelector('#tablaResultados tbody').innerHTML = '';
++    return;
+   }
++  const current = select.dataset.selected || torneos[0].id;
++  torneos.forEach(t => {
++    const opt = document.createElement('option');
++    opt.value = t.id;
++    opt.textContent = `${t.name} (${t.season})`;
++    if (String(t.id) === String(current)) opt.selected = true;
++    select.appendChild(opt);
++  });
++  const torneoId = select.value;
++  select.dataset.selected = torneoId;
+ 
+-  const torneoId = select.value || torneos[0]?.id;
+-  const r = await fetch(API + `/tournaments/${torneoId}/upcoming`);
+-  const data = await r.json();
++  const r = await fetch(`${API}/tournaments/${torneoId}/matches`, { headers: authHeaders() });
++  if (!r.ok) {
++    document.getElementById('listaPartidos').innerHTML = '<p class="small">No hay partidos disponibles.</p>';
++    document.querySelector('#tablaResultados tbody').innerHTML = '';
++    return;
++  }
++  matchesCache = await r.json();
+ 
+-  lista.innerHTML = '';
+-  data.forEach(p => {
+-    lista.innerHTML += `
+-      <div class="item">
++  const upcomingContainer = document.getElementById('listaPartidos');
++  upcomingContainer.innerHTML = '';
++  const upcoming = matchesCache.filter(m => m.status === 'scheduled');
++  if (!upcoming.length) {
++    upcomingContainer.innerHTML = '<p class="small">No hay partidos programados.</p>';
++  } else {
++    upcoming.forEach(p => {
++      const item = document.createElement('div');
++      item.className = 'item';
++      item.innerHTML = `
+         <div class="teams">
+-          <div>${p.home_emoji} ${p.home_name}</div> 
+-          vs 
++          <div>${p.home_emoji} ${p.home_name}</div>
++          vs
+           <div>${p.away_emoji} ${p.away_name}</div>
+         </div>
+-        <div class="small">${p.match_date} • ${p.match_time?.slice(0,5) || ''} • ${p.location}</div>
+-      </div>`;
++        <div class="small">${p.match_date || ''} • ${(p.match_time || '').slice(0,5)} • ${p.location || ''}</div>`;
++      upcomingContainer.appendChild(item);
++    });
++  }
++
++  const tbody = document.querySelector('#tablaResultados tbody');
++  tbody.innerHTML = '';
++  if (!matchesCache.length) {
++    const tr = document.createElement('tr');
++    tr.innerHTML = '<td colspan="5" class="small">Aún no hay fixture generado.</td>';
++    tbody.appendChild(tr);
++    return;
++  }
++
++  matchesCache.forEach(match => {
++    const tr = document.createElement('tr');
++    const homeVal = match.home_goals ?? '';
++    const awayVal = match.away_goals ?? '';
++    tr.innerHTML = `
++      <td>${match.match_date || ''}</td>
++      <td>Fecha ${match.round}</td>
++      <td>${match.home_emoji} ${match.home_name} vs ${match.away_emoji} ${match.away_name}</td>
++      <td>
++        <div class="result-inputs">
++          <input type="number" min="0" id="res-${match.id}-home" value="${homeVal}" class="input-small">
++          <span>-</span>
++          <input type="number" min="0" id="res-${match.id}-away" value="${awayVal}" class="input-small">
++        </div>
++      </td>
++      <td><button class="btn primary" onclick="guardarResultado(${match.id})">Guardar</button></td>`;
++    tbody.appendChild(tr);
+   });
+ }
+ 
+-/* ---------------------------- 🔧 UTILIDADES ---------------------------- */
+-async function obtenerTorneos() {
+-  const r = await fetch(API + '/tournaments', { headers: { 'Authorization': 'Bearer ' + token } });
+-  return await r.json();
++async function guardarResultado(matchId) {
++  const homeInput = document.getElementById(`res-${matchId}-home`);
++  const awayInput = document.getElementById(`res-${matchId}-away`);
++  const home_goals = parseInt(homeInput.value, 10);
++  const away_goals = parseInt(awayInput.value, 10);
++
++  if (Number.isNaN(home_goals) || Number.isNaN(away_goals)) {
++    alert('Ingresá goles válidos');
++    return;
++  }
++
++  const r = await fetch(`${API}/tournaments/matches/${matchId}/result`, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json', ...authHeaders() },
++    body: JSON.stringify({ home_goals, away_goals })
++  });
++  const d = await r.json();
++  if (r.ok && d.ok) {
++    alert('Resultado actualizado');
++    cargarPartidos();
++  } else {
++    alert(d.error || 'No se pudo guardar el resultado');
++  }
+ }
+ 
++/* ---------------------------- 🔧 UTILIDADES ---------------------------- */
+ async function cargarTorneosEnSelects() {
+   const torneos = await obtenerTorneos();
+   const eqSel = document.getElementById('eqTorneo');
++  if (!eqSel) return;
+   eqSel.innerHTML = '';
+   torneos.forEach(t => {
+     const opt = document.createElement('option');
+@@ -290,3 +588,4 @@ async function cargarTorneosEnSelects() {
+ window.addEventListener('load', () => {
+   cargarTorneos();
+ });
++
+diff --git a/sql/schema.sql b/sql/schema.sql
+index 543d236..431a058 100644
+--- a/sql/schema.sql
++++ b/sql/schema.sql
+@@ -19,7 +19,13 @@ CREATE TABLE IF NOT EXISTS tournaments (
+   name VARCHAR(120) NOT NULL,
+   season YEAR NOT NULL,
+   status ENUM('active','finished') DEFAULT 'active',
+-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++  admin_id INT NOT NULL,
++  total_rounds INT NOT NULL DEFAULT 1,
++  start_date DATE NULL,
++  match_time TIME NULL,
++  location VARCHAR(80) NULL,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
+ );
+ 
+ -- Equipos
+diff --git a/sql/seed.sql b/sql/seed.sql
+index 7b49b60..2d29199 100644
+--- a/sql/seed.sql
++++ b/sql/seed.sql
+@@ -3,7 +3,11 @@ USE golapp;
+ -- Passwords hash se insertarán desde Node si corrés seeds por script,
+ -- pero dejamos algunos datos de ejemplo mínimos.
+ 
+-INSERT INTO tournaments (name, season) VALUES ('Torneo Apertura', 2025);
++INSERT INTO users (name, email, password_hash, role, team_id)
++VALUES ('Admin Demo', 'admin@golapp.com', '$2a$10$37KG0wvcmPZAIq9VlUbAv.2C.aJvN6R0VEeyMNrswzTu6/ZBbjpUG', 'admin', NULL);
++
++INSERT INTO tournaments (name, season, status, admin_id, total_rounds, start_date, match_time, location)
++VALUES ('Torneo Apertura', 2025, 'active', 1, 3, '2025-01-10', '16:00:00', 'Cancha Central');
+ 
+ INSERT INTO teams (name, emoji, tournament_id) VALUES 
+ ('Los Tigres FC', '🐯', 1),
+diff --git a/src/routes/auth.js b/src/routes/auth.js
+index a1987d1..4fb1c8d 100644
+--- a/src/routes/auth.js
++++ b/src/routes/auth.js
+@@ -16,7 +16,7 @@ function sign(user) {
+ // REGISTRO DE USUARIO
+ router.post('/register', async (req, res) => {
+   try {
+-    const { name, email, password, role } = req.body;
++    const { name, email, password, role, team_id } = req.body;
+ 
+     // Validaciones básicas
+     if (!name || !email || !password) return res.status(400).json({ error: 'Todos los campos son obligatorios.' });
+@@ -27,11 +27,21 @@ router.post('/register', async (req, res) => {
+ 
+     const pass = await hashPassword(password);
+     const userRole = role === 'captain' ? 'captain' : 'admin';
++    let teamId = null;
++    if (userRole === 'captain' && team_id) {
++      const [[team]] = await pool.query('SELECT id FROM teams WHERE id=?', [team_id]);
++      if (!team) return res.status(400).json({ error: 'Equipo no válido.' });
++      teamId = team.id;
++    }
+     const [result] = await pool.query(
+-      'INSERT INTO users (name, email, password_hash, role) VALUES (?,?,?,?)',
+-      [name, email, pass, userRole]
++      'INSERT INTO users (name, email, password_hash, role, team_id) VALUES (?,?,?,?,?)',
++      [name, email, pass, userRole, teamId]
+     );
+ 
++    if (userRole === 'captain' && teamId) {
++      await pool.query('UPDATE teams SET captain_user_id=? WHERE id=?', [result.insertId, teamId]);
++    }
++
+     const [rows] = await pool.query('SELECT * FROM users WHERE id=?', [result.insertId]);
+     const token = sign(rows[0]);
+     res.json({ token, user: rows[0] });
+diff --git a/src/routes/tournaments.js b/src/routes/tournaments.js
+index fbe4066..677547b 100644
+--- a/src/routes/tournaments.js
++++ b/src/routes/tournaments.js
+@@ -3,13 +3,142 @@ const router = express.Router();
+ const { pool } = require('../config/db');
+ const { authRequired, roleRequired } = require('../middleware/auth');
+ const { generateRoundRobin } = require('../utils/fixture');
++const { hashPassword } = require('../utils/hash');
++
++async function getTournamentForAdmin(tournamentId, adminId) {
++  const [[tournament]] = await pool.query(
++    'SELECT * FROM tournaments WHERE id=? AND admin_id=?',
++    [tournamentId, adminId]
++  );
++  return tournament;
++}
++
++async function getTeamForAdmin(teamId, adminId) {
++  const [[team]] = await pool.query(
++    `SELECT teams.* FROM teams
++     JOIN tournaments ON tournaments.id = teams.tournament_id
++     WHERE teams.id=? AND tournaments.admin_id=?`,
++    [teamId, adminId]
++  );
++  return team;
++}
++
++async function getMatchForAdmin(matchId, adminId) {
++  const [[match]] = await pool.query(
++    `SELECT matches.* FROM matches
++     JOIN tournaments ON tournaments.id = matches.tournament_id
++     WHERE matches.id=? AND tournaments.admin_id=?`,
++    [matchId, adminId]
++  );
++  return match;
++}
++
++async function getCaptainForAdmin(captainId, adminId) {
++  const [[captain]] = await pool.query(
++    `SELECT u.*, tm.admin_id FROM users u
++     LEFT JOIN teams t ON t.id = u.team_id
++     LEFT JOIN tournaments tm ON tm.id = t.tournament_id
++     WHERE u.id=? AND u.role='captain'`,
++    [captainId]
++  );
++  if (!captain) return null;
++  if (captain.admin_id && captain.admin_id !== adminId) return null;
++  return captain;
++}
++
++async function autoGenerateFixture(tournamentId) {
++  const [[tournament]] = await pool.query(
++    'SELECT id, total_rounds, start_date, match_time, location FROM tournaments WHERE id=?',
++    [tournamentId]
++  );
++  if (!tournament) return { generated: false, rounds: 0 };
++
++  const [teams] = await pool.query(
++    'SELECT id FROM teams WHERE tournament_id=? ORDER BY id ASC',
++    [tournamentId]
++  );
++  if (teams.length < 2) return { generated: false, rounds: 0 };
++
++  const [[existing]] = await pool.query(
++    'SELECT COUNT(*) AS total FROM matches WHERE tournament_id=?',
++    [tournamentId]
++  );
++  if (existing.total > 0) return { generated: false, rounds: 0 };
++
++  const teamIds = teams.map(t => t.id);
++  const baseRounds = generateRoundRobin(teamIds);
++  if (!baseRounds.length) return { generated: false, rounds: 0 };
++
++  const totalRounds = tournament.total_rounds || baseRounds.length;
++  const baseDate = tournament.start_date ? new Date(tournament.start_date) : new Date();
++  const matchTime = tournament.match_time || '16:00:00';
++  const location = tournament.location || 'Cancha A';
++
++  for (let roundIndex = 0; roundIndex < totalRounds; roundIndex++) {
++    const template = baseRounds[roundIndex % baseRounds.length];
++    const cycle = Math.floor(roundIndex / baseRounds.length);
++    const roundMatches = template.map(match =>
++      cycle % 2 === 1 ? { home: match.away, away: match.home } : match
++    );
++
++    const roundDate = new Date(baseDate);
++    roundDate.setDate(baseDate.getDate() + roundIndex * 7);
++
++    for (const m of roundMatches) {
++      await pool.query(
++        `INSERT INTO matches
++         (tournament_id, round, match_date, match_time, location, home_team_id, away_team_id)
++         VALUES (?,?,?,?,?,?,?)`,
++        [
++          tournamentId,
++          roundIndex + 1,
++          roundDate.toISOString().slice(0, 10),
++          matchTime,
++          location,
++          m.home,
++          m.away
++        ]
++      );
++    }
++  }
++
++  return { generated: true, rounds: totalRounds };
++}
+ 
+ // Crear torneo
+ router.post('/', authRequired, roleRequired('admin'), async (req, res) => {
+   try {
+-    const { name, season } = req.body;
+-    const [r] = await pool.query('INSERT INTO tournaments (name, season) VALUES (?,?)', [name, season]);
+-    res.json({ id: r.insertId, name, season, status: 'active' });
++    const { name, season, rounds, startDate, matchTime, location } = req.body;
++
++    if (!name || !season || !rounds) {
++      return res.status(400).json({ error: 'Nombre, temporada y cantidad de fechas son obligatorios' });
++    }
++
++    const [r] = await pool.query(
++      `INSERT INTO tournaments
++       (name, season, status, admin_id, total_rounds, start_date, match_time, location)
++       VALUES (?,?,?,?,?,?,?,?)`,
++      [
++        name,
++        season,
++        'active',
++        req.user.id,
++        rounds,
++        startDate || null,
++        matchTime || null,
++        location || null
++      ]
++    );
++    res.json({
++      id: r.insertId,
++      name,
++      season,
++      status: 'active',
++      total_rounds: rounds,
++      start_date: startDate,
++      match_time: matchTime,
++      location
++    });
+   } catch (e) {
+     console.error(e);
+     res.status(500).json({ error: 'Error al crear torneo' });
+@@ -18,59 +147,265 @@ router.post('/', authRequired, roleRequired('admin'), async (req, res) => {
+ 
+ // Listar torneos
+ router.get('/', authRequired, async (req, res) => {
+-  const [rows] = await pool.query('SELECT * FROM tournaments ORDER BY id DESC');
+-  res.json(rows);
++  try {
++    if (req.user.role === 'admin') {
++      const [rows] = await pool.query(
++        'SELECT * FROM tournaments WHERE admin_id=? ORDER BY id DESC',
++        [req.user.id]
++      );
++      return res.json(rows);
++    }
++
++    if (req.user.role === 'captain') {
++      const [rows] = await pool.query(
++        `SELECT t.* FROM tournaments t
++         JOIN teams tm ON tm.tournament_id = t.id
++         WHERE tm.id = ?
++         ORDER BY t.id DESC`,
++        [req.user.team_id]
++      );
++      return res.json(rows);
++    }
++
++    res.json([]);
++  } catch (e) {
++    console.error(e);
++    res.status(500).json({ error: 'Error al listar torneos' });
++  }
++});
++
++// Listado de capitanes del admin
++router.get('/captains', authRequired, roleRequired('admin'), async (req, res) => {
++  try {
++    const [rows] = await pool.query(
++      `SELECT u.id, u.name, u.email, u.team_id, t.name AS team_name, tm.name AS tournament_name
++       FROM users u
++       LEFT JOIN teams t ON t.id = u.team_id
++       LEFT JOIN tournaments tm ON tm.id = t.tournament_id
++       WHERE u.role='captain' AND tm.admin_id = ?
++       ORDER BY u.id DESC`,
++      [req.user.id]
++    );
++    res.json(rows);
++  } catch (e) {
++    console.error(e);
++    res.status(500).json({ error: 'Error al listar capitanes' });
++  }
++});
++
++// Actualizar capitán
++router.put('/captains/:id', authRequired, roleRequired('admin'), async (req, res) => {
++  try {
++    const captainId = req.params.id;
++    const { name, email, password, team_id } = req.body;
++
++    const [[captain]] = await pool.query(
++      `SELECT u.*, t.tournament_id, tm.admin_id FROM users u
++       LEFT JOIN teams t ON t.id = u.team_id
++       LEFT JOIN tournaments tm ON tm.id = t.tournament_id
++       WHERE u.id=? AND u.role='captain'`,
++      [captainId]
++    );
++
++    if (!captain || captain.admin_id !== req.user.id) {
++      return res.status(404).json({ error: 'Capitán no encontrado' });
++    }
++
++    let passwordHash = captain.password_hash;
++    if (password) passwordHash = await hashPassword(password);
++
++    const targetTeamId = team_id || null;
++    if (targetTeamId) {
++      const team = await getTeamForAdmin(targetTeamId, req.user.id);
++      if (!team) return res.status(400).json({ error: 'Equipo inválido para este admin' });
++    }
++
++    await pool.query(
++      'UPDATE users SET name=?, email=?, password_hash=?, team_id=? WHERE id=?',
++      [
++        name ?? captain.name,
++        email ?? captain.email,
++        passwordHash,
++        targetTeamId,
++        captainId
++      ]
++    );
++
++    // Actualizar relación con equipos
++    await pool.query('UPDATE teams SET captain_user_id=NULL WHERE captain_user_id=?', [captainId]);
++    if (targetTeamId) {
++      await pool.query('UPDATE teams SET captain_user_id=? WHERE id=?', [captainId, targetTeamId]);
++    }
++
++    res.json({ ok: true });
++  } catch (e) {
++    console.error(e);
++    res.status(500).json({ error: 'Error al actualizar capitán' });
++  }
+ });
+ 
+ // Equipos del torneo
+ router.get('/:id/teams', authRequired, async (req, res) => {
+-  const [rows] = await pool.query('SELECT * FROM teams WHERE tournament_id=?', [req.params.id]);
+-  res.json(rows);
++  try {
++    const tournamentId = req.params.id;
++
++    if (req.user.role === 'admin') {
++      const tournament = await getTournamentForAdmin(tournamentId, req.user.id);
++      if (!tournament) return res.status(403).json({ error: 'No autorizado' });
++    } else if (req.user.role === 'captain') {
++      const [[team]] = await pool.query(
++        'SELECT id FROM teams WHERE id=? AND tournament_id=?',
++        [req.user.team_id, tournamentId]
++      );
++      if (!team) return res.status(403).json({ error: 'No autorizado' });
++    }
++
++    const [rows] = await pool.query(
++      `SELECT teams.*, u.name AS captain_name, u.email AS captain_email
++       FROM teams
++       LEFT JOIN users u ON u.id = teams.captain_user_id
++       WHERE teams.tournament_id=?
++       ORDER BY teams.name ASC`,
++      [tournamentId]
++    );
++    res.json(rows);
++  } catch (e) {
++    console.error(e);
++    res.status(500).json({ error: 'Error al listar equipos' });
++  }
+ });
+ 
+ // Crear equipo
+ router.post('/:id/teams', authRequired, roleRequired('admin'), async (req, res) => {
+-  const { name, emoji } = req.body;
+-  const [r] = await pool.query('INSERT INTO teams (name, emoji, tournament_id) VALUES (?,?,?)', [name, emoji || '⚽', req.params.id]);
+-  res.json({ id: r.insertId, name, emoji });
++  try {
++    const tournamentId = req.params.id;
++    const tournament = await getTournamentForAdmin(tournamentId, req.user.id);
++    if (!tournament) return res.status(403).json({ error: 'No autorizado' });
++
++    const { name, emoji } = req.body;
++    if (!name) return res.status(400).json({ error: 'Nombre obligatorio' });
++
++    const [r] = await pool.query(
++      'INSERT INTO teams (name, emoji, tournament_id) VALUES (?,?,?)',
++      [name, emoji || '⚽', tournamentId]
++    );
++
++    const fixtureInfo = await autoGenerateFixture(tournamentId);
++
++    res.json({
++      id: r.insertId,
++      name,
++      emoji,
++      fixtureGenerated: fixtureInfo.generated,
++      rounds: fixtureInfo.rounds
++    });
++  } catch (e) {
++    console.error(e);
++    res.status(500).json({ error: 'Error al crear equipo' });
++  }
++});
++
++// Actualizar equipo
++router.put('/teams/:teamId', authRequired, roleRequired('admin'), async (req, res) => {
++  try {
++    const teamId = req.params.teamId;
++    const team = await getTeamForAdmin(teamId, req.user.id);
++    if (!team) return res.status(404).json({ error: 'Equipo no encontrado' });
++
++    const { name, emoji, captain_user_id } = req.body;
++    let captainId = captain_user_id || null;
++    if (captainId) {
++      const captain = await getCaptainForAdmin(captainId, req.user.id);
++      if (!captain) return res.status(400).json({ error: 'Capitán inválido' });
++    }
++    await pool.query(
++      'UPDATE teams SET name=?, emoji=?, captain_user_id=? WHERE id=?',
++      [name, emoji || '⚽', captainId, teamId]
++    );
++
++    if (captainId) {
++      await pool.query('UPDATE users SET team_id=? WHERE id=?', [teamId, captainId]);
++    }
++
++    res.json({ ok: true });
++  } catch (e) {
++    console.error(e);
++    res.status(500).json({ error: 'Error al actualizar equipo' });
++  }
+ });
+ 
+ // Agregar jugador
+ router.post('/teams/:teamId/players', authRequired, roleRequired('admin','captain'), async (req, res) => {
+-  const { name, number, position } = req.body;
+-  const [r] = await pool.query('INSERT INTO players (team_id, number, name, position) VALUES (?,?,?,?)', [req.params.teamId, number, name, position]);
+-  res.json({ id: r.insertId, name, number, position });
++  try {
++    const teamId = req.params.teamId;
++    if (req.user.role === 'admin') {
++      const team = await getTeamForAdmin(teamId, req.user.id);
++      if (!team) return res.status(403).json({ error: 'No autorizado' });
++    } else if (req.user.role === 'captain') {
++      if (parseInt(teamId, 10) !== req.user.team_id) {
++        return res.status(403).json({ error: 'No autorizado' });
++      }
++    }
++
++    const { name, number, position } = req.body;
++    const [r] = await pool.query(
++      'INSERT INTO players (team_id, number, name, position) VALUES (?,?,?,?)',
++      [teamId, number, name, position]
++    );
++    res.json({ id: r.insertId, name, number, position });
++  } catch (e) {
++    console.error(e);
++    res.status(500).json({ error: 'Error al agregar jugador' });
++  }
+ });
+ 
+ // Eliminar jugador
+ router.delete('/players/:id', authRequired, roleRequired('admin','captain'), async (req,res) => {
+-  await pool.query('DELETE FROM players WHERE id=?', [req.params.id]);
+-  res.json({ ok: true });
++  try {
++    const playerId = req.params.id;
++    const [[player]] = await pool.query(
++      `SELECT p.*, t.tournament_id, tm.admin_id FROM players p
++       JOIN teams t ON t.id = p.team_id
++       JOIN tournaments tm ON tm.id = t.tournament_id
++       WHERE p.id=?`,
++      [playerId]
++    );
++
++    if (!player) return res.status(404).json({ error: 'Jugador no encontrado' });
++
++    if (req.user.role === 'admin' && player.admin_id !== req.user.id) {
++      return res.status(403).json({ error: 'No autorizado' });
++    }
++    if (req.user.role === 'captain' && player.team_id !== req.user.team_id) {
++      return res.status(403).json({ error: 'No autorizado' });
++    }
++
++    await pool.query('DELETE FROM players WHERE id=?', [playerId]);
++    res.json({ ok: true });
++  } catch (e) {
++    console.error(e);
++    res.status(500).json({ error: 'Error al eliminar jugador' });
++  }
+ });
+ 
+ // Generar fixture
+ router.post('/:id/generate-fixture', authRequired, roleRequired('admin'), async (req, res) => {
+   try {
+     const tournamentId = parseInt(req.params.id, 10);
++    const tournament = await getTournamentForAdmin(tournamentId, req.user.id);
++    if (!tournament) return res.status(403).json({ error: 'No autorizado' });
++
+     const { startDate, time = '16:00:00', location = 'Cancha A' } = req.body;
+-    const [teams] = await pool.query('SELECT id FROM teams WHERE tournament_id=?', [tournamentId]);
+-    const teamIds = teams.map(t => t.id);
+-    if (teamIds.length < 2) return res.status(400).json({ error: 'Se necesitan al menos 2 equipos' });
+-
+-    const rounds = generateRoundRobin(teamIds);
+-    // Guardar partidos
+-    let date = new Date(startDate || Date.now());
+-    for (let r = 0; r < rounds.length; r++) {
+-      for (const m of rounds[r]) {
+-        await pool.query(
+-          'INSERT INTO matches (tournament_id, round, match_date, match_time, location, home_team_id, away_team_id) VALUES (?,?,?,?,?,?,?)',
+-          [tournamentId, r+1, date.toISOString().slice(0,10), time, location, m.home, m.away]
+-        );
+-      }
+-      // próxima fecha: +7 días
+-      date.setDate(date.getDate()+7);
+-    }
+-    res.json({ ok: true, rounds: rounds.length });
++
++    await pool.query('DELETE FROM matches WHERE tournament_id=?', [tournamentId]);
++    await pool.query(
++      'UPDATE tournaments SET start_date=?, match_time=?, location=? WHERE id=?',
++      [startDate || tournament.start_date, time, location, tournamentId]
++    );
++
++    const info = await autoGenerateFixture(tournamentId);
++    if (!info.generated) return res.status(400).json({ error: 'No se pudo generar el fixture (verifica equipos)' });
++    res.json({ ok: true, rounds: info.rounds });
+   } catch (e) {
+     console.error(e);
+     res.status(500).json({ error: 'No se pudo generar el fixture' });
+@@ -79,12 +414,54 @@ router.post('/:id/generate-fixture', authRequired, roleRequired('admin'), async
+ 
+ // Registrar resultado
+ router.post('/matches/:id/result', authRequired, roleRequired('admin','captain'), async (req,res) => {
+-  const { home_goals, away_goals } = req.body;
+-  await pool.query(
+-    'UPDATE matches SET home_goals=?, away_goals=?, status="played" WHERE id=?',
+-    [home_goals, away_goals, req.params.id]
+-  );
+-  res.json({ ok: true });
++  try {
++    const matchId = req.params.id;
++    const { home_goals, away_goals } = req.body;
++
++    if (req.user.role === 'admin') {
++      const match = await getMatchForAdmin(matchId, req.user.id);
++      if (!match) return res.status(403).json({ error: 'No autorizado' });
++    } else if (req.user.role === 'captain') {
++      const [[match]] = await pool.query(
++        'SELECT * FROM matches WHERE id=? AND (home_team_id=? OR away_team_id=?)',
++        [matchId, req.user.team_id, req.user.team_id]
++      );
++      if (!match) return res.status(403).json({ error: 'No autorizado' });
++    }
++
++    await pool.query(
++      'UPDATE matches SET home_goals=?, away_goals=?, status="played" WHERE id=?',
++      [home_goals, away_goals, matchId]
++    );
++    res.json({ ok: true });
++  } catch (e) {
++    console.error(e);
++    res.status(500).json({ error: 'Error al registrar resultado' });
++  }
++});
++
++// Listado completo de partidos del torneo (para admin)
++router.get('/:id/matches', authRequired, roleRequired('admin'), async (req, res) => {
++  try {
++    const tournamentId = req.params.id;
++    const tournament = await getTournamentForAdmin(tournamentId, req.user.id);
++    if (!tournament) return res.status(403).json({ error: 'No autorizado' });
++
++    const [rows] = await pool.query(
++      `SELECT m.*, th.name AS home_name, th.emoji AS home_emoji,
++              ta.name AS away_name, ta.emoji AS away_emoji
++       FROM matches m
++       JOIN teams th ON th.id = m.home_team_id
++       JOIN teams ta ON ta.id = m.away_team_id
++       WHERE m.tournament_id=?
++       ORDER BY m.round ASC, m.match_date, m.match_time`,
++      [tournamentId]
++    );
++    res.json(rows);
++  } catch (e) {
++    console.error(e);
++    res.status(500).json({ error: 'Error al listar partidos' });
++  }
+ });
+ 
+ // Tabla de posiciones
+@@ -125,10 +502,24 @@ router.get('/:id/upcoming', async (req,res)=>{
+ // ✏️ Editar torneo existente
+ router.put('/:id', authRequired, roleRequired('admin'), async (req, res) => {
+   try {
+-    const { name, season, status } = req.body;
++    const tournament = await getTournamentForAdmin(req.params.id, req.user.id);
++    if (!tournament) return res.status(403).json({ error: 'No autorizado' });
++
++    const { name, season, status, total_rounds, start_date, match_time, location } = req.body;
+     await pool.query(
+-      'UPDATE tournaments SET name=?, season=?, status=? WHERE id=?',
+-      [name, season, status, req.params.id]
++      `UPDATE tournaments
++       SET name=?, season=?, status=?, total_rounds=?, start_date=?, match_time=?, location=?
++       WHERE id=?`,
++      [
++        name,
++        season,
++        status,
++        total_rounds ?? tournament.total_rounds,
++        start_date ?? tournament.start_date,
++        match_time ?? tournament.match_time,
++        location ?? tournament.location,
++        req.params.id
++      ]
+     );
+     res.json({ ok: true });
+   } catch (e) {
