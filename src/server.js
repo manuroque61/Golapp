@@ -4,7 +4,6 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const dotenv = require('dotenv');
 const { pool, testConnection, connectionConfig } = require('./config/db');
-const { assertCompatibleSchema } = require('./utils/schemaCheck');
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -35,18 +34,12 @@ app.get('/api/health', async (req, res) => {
 async function bootstrap() {
   try {
     await testConnection();
-    await assertCompatibleSchema(pool, connectionConfig.database);
     console.log(
       `✅ MySQL conectado (${connectionConfig.user}@${connectionConfig.host}:${connectionConfig.port}/${connectionConfig.database})`
     );
   } catch (error) {
-    if (error.code === 'ER_SCHEMA_MISMATCH') {
-      console.error('❌ La base de datos existe pero le faltan columnas necesarias para esta versión.');
-      console.error(error.message);
-    } else {
-      console.error('❌ No se pudo conectar a MySQL. Verificá tus variables de entorno y que la base exista.');
-      console.error(error.message);
-    }
+    console.error('❌ No se pudo conectar a MySQL. Verificá tus variables de entorno y que la base exista.');
+    console.error(error.message);
     process.exit(1);
   }
 
