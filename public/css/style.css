@@ -157,7 +157,9 @@ body{
   box-shadow:var(--shadow);
   display:flex;
   align-items:center;
-  justify-content:space-between
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap
 }
 
 .item .teams{
@@ -209,8 +211,8 @@ input[type="text"], input[type="number"], input[type="date"], input[type="passwo
 
 .form-row{
   display:grid;
-  grid-template-rows:1fr 1fr 1fr;
   gap:12px;
+  grid-template-columns:1fr;
 }
 
 .kpis{
@@ -269,4 +271,32 @@ input, select { margin-bottom: 8px; }
 /* Mini badges for table */
 .badge-sm{
   background:#eef6ff; color:#1976d2; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:600;
+}
+
+.table-responsive{
+  max-height:420px;
+  overflow:auto;
+}
+
+.results-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:20px;
+  margin-top:16px;
+}
+
+.list .actions{
+  display:flex;
+  gap:8px;
+}
+
+.result-inputs{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.input-small{
+  width:60px;
+  padding:6px 8px;
 }
