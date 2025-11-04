@@ -1,26 +1,32 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/x-icon" href="images/icono.ico">
   <title>GolApp - Capitán</title>
-  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
+
 <body>
   <div class="container">
-    <div class="header"><h2 id="teamTitle">Mi Equipo</h2></div>
-    <div class="nav">
-      <button class="active">Mi Plantilla</button>
-      <button>Fixture</button>
-      <button>Posiciones</button>
-      <button>Notificaciones</button>
+    <div class="header">
+      <h2 id="teamTitle">Mi Equipo</h2>
     </div>
+    <div class="nav">
+      <button id="bPlantilla" class="active" onclick="mostrarSeccion('plantilla')">Mi Plantilla</button>
+      <button onclick="mostrarSeccion('fixture')">Fixture</button>
+      <button onclick="mostrarSeccion('posiciones')">Posiciones</button>
+      <button onclick="mostrarSeccion('notificaciones')">Notificaciones</button>
+    </div>
+
 
     <div class="card">
       <h3>Agregar Nuevo Jugador</h3>
       <div class="form-row">
-        <input id="pname" type="text" placeholder="Nombre del jugador"/>
-        <input id="pnum" type="number" placeholder="N°"/>
+        <input id="pname" type="text" placeholder="Nombre del jugador" />
+        <input id="pnum" type="number" placeholder="N°" />
         <select id="ppos">
           <option>Delantero</option>
           <option>Mediocampista</option>
@@ -41,4 +47,5 @@
 
   <script src="js/captain.js"></script>
 </body>
+
 </html>

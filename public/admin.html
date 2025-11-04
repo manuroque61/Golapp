@@ -1,48 +1,145 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/x-icon" href="images/icono.ico">
   <title>GolApp - Admin</title>
-  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
+
 <body>
   <div class="container">
-    <div class="header">
-      <h2>Panel de Administración</h2>
-      <div><span class="badge" id="uName">Admin</span></div>
-    </div>
+    <h2>Panel de Administración</h2>
 
-    <div class="kpis">
-      <div class="kpi"><div>Torneos</div><div class="n" id="kTournaments">0</div></div>
-      <div class="kpi"><div>Equipos</div><div class="n" id="kTeams">0</div></div>
-      <div class="kpi"><div>Capitanes</div><div class="n" id="kCaptains">0</div></div>
-      <div class="kpi"><div>Notificaciones</div><div class="n">2</div></div>
-    </div>
-
+    <!-- Barra de navegación -->
     <div class="nav">
-      <button class="active">Torneos</button>
-      <button onclick="location.href='team.html'">Capitanes</button>
-      <button onclick="location.href='publico.html'">Estadísticas</button>
+      <button class="active" onclick="mostrarSeccion('torneos')">Torneos</button>
+      <button onclick="mostrarSeccion('capitanes')">Capitanes</button>
+      <button onclick="mostrarSeccion('equipos')">Equipos</button>
+      <button onclick="mostrarSeccion('partidos')">Próximos Partidos</button>
     </div>
 
-    <div class="card">
-      <div class="header">
-        <h3>Gestión de Torneos</h3>
-        <button class="btn primary" onclick="crearTorneo()">+ Crear Torneo</button>
-      </div>
-      <table class="table" id="torneosTable">
-        <thead><tr><th>Nombre</th><th>Temporada</th><th>Equipos</th><th>Fechas</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <!-- 🏆 SECCIÓN TORNEOS -->
+    <div id="seccion-torneos" class="card">
+      <h3>Torneos</h3>
+
+      <!-- Formulario para crear torneo -->
+      <form id="formTorneo" onsubmit="crearTorneo(event)">
+        <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
+          <input type="text" id="torneoName" placeholder="Nombre del torneo" required>
+          <input type="number" id="torneoSeason" placeholder="Año (2025)" required>
+          <input type="date" id="torneoStart" required>
+        </div>
+        <div class="form-row" style="grid-template-columns:1fr 1fr;">
+          <input type="time" id="torneoTime" required>
+          <input type="text" id="torneoCancha" placeholder="Cancha o ubicación" required>
+        </div>
+        <button class="btn primary" type="submit">+ Crear Torneo</button>
+      </form>
+
+      <!-- Tabla de torneos -->
+      <table class="table" id="tablaTorneos">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Temporada</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
         <tbody></tbody>
       </table>
     </div>
 
-    <div class="card">
-      <h3>Registrar Resultados</h3>
-      <div id="resultados" class="list"></div>
+    <!-- 👤 SECCIÓN CAPITANES -->
+    <div id="seccion-capitanes" class="card" style="display:none">
+      <h3>Capitanes</h3>
+      <form id="formCapitan" onsubmit="crearCapitan(event)">
+        <div class="form-row">
+          <input type="text" id="capName" placeholder="Nombre completo" required>
+          <input type="email" id="capEmail" placeholder="Email" required>
+          <input type="password" id="capPass" placeholder="Contraseña" required>
+          <select id="capEquipo" required></select>
+        </div>
+        <button class="btn primary" type="submit">+ Crear Capitán</button>
+      </form>
+      <div id="listaCapitanes" class="list"></div>
+    </div>
+
+    <!-- ⚽ SECCIÓN EQUIPOS -->
+    <div id="seccion-equipos" class="card" style="display:none">
+      <h3>Equipos</h3>
+      <form id="formEquipo" onsubmit="crearEquipo(event)">
+        <div class="form-row">
+          <input type="text" id="eqNombre" placeholder="Nombre del equipo" required>
+          <input type="text" id="eqEmoji" placeholder="Emoji (⚽)">
+          <select id="eqTorneo" required></select>
+        </div>
+        <button class="btn primary" type="submit">+ Crear Equipo</button>
+      </form>
+      <div id="listaEquipos" class="list"></div>
+    </div>
+
+    <!-- 📅 SECCIÓN PRÓXIMOS PARTIDOS -->
+    <div id="seccion-partidos" class="card" style="display:none">
+      <h3>Próximos Partidos</h3>
+      <select id="partidosTorneo" onchange="cargarPartidos()"></select>
+      <div id="listaPartidos" class="list"></div>
     </div>
   </div>
 
+  <!-- MODAL: Editar Torneo -->
+  <div id="modalEdit" class="modal-backdrop">
+    <div class="modal">
+      <header>
+        <h3>Editar Torneo</h3>
+        <button class="btn gray" type="button" onclick="closeEditModal()">✕</button>
+      </header>
+      <div>
+        <div class="form-row" style="grid-template-columns:1fr 1fr;">
+          <input type="text" id="editName" placeholder="Nombre del torneo" required>
+          <input type="number" id="editSeason" placeholder="Año (2025)" required>
+        </div>
+        <div class="form-row" style="grid-template-columns:1fr;">
+          <select id="editStatus">
+            <option value="active">Activo</option>
+            <option value="finished">Finalizado</option>
+          </select>
+        </div>
+      </div>
+      <footer>
+        <button class="btn gray" type="button" onclick="closeEditModal()">Cancelar</button>
+        <button class="btn primary" type="button" onclick="submitEditTournament()">Guardar cambios</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- MODAL: Generar Fixture -->
+  <div id="modalFixture" class="modal-backdrop">
+    <div class="modal">
+      <header>
+        <h3>Generar Fixture</h3>
+        <button class="btn gray" type="button" onclick="closeFixtureModal()">✕</button>
+      </header>
+      <div>
+        <div class="form-row" style="grid-template-columns:1fr 1fr;">
+          <input type="date" id="fxStart" required>
+          <input type="time" id="fxTime" required>
+        </div>
+        <div class="form-row" style="grid-template-columns:1fr;">
+          <input type="text" id="fxLocation" placeholder="Cancha / ubicación" required>
+        </div>
+        <p class="small">El fixture se arma automáticamente si hay al menos 2 equipos.</p>
+      </div>
+      <footer>
+        <button class="btn gray" type="button" onclick="closeFixtureModal()">Cancelar</button>
+        <button class="btn primary" type="button" onclick="submitGenerateFixture()">Generar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Script principal -->
   <script src="js/admin.js"></script>
 </body>
-</html>

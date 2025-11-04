@@ -122,4 +122,20 @@ router.get('/:id/upcoming', async (req,res)=>{
   res.json(rows);
 });
 
+// ✏️ Editar torneo existente
+router.put('/:id', authRequired, roleRequired('admin'), async (req, res) => {
+  try {
+    const { name, season, status } = req.body;
+    await pool.query(
+      'UPDATE tournaments SET name=?, season=?, status=? WHERE id=?',
+      [name, season, status, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al actualizar torneo' });
+  }
+});
+
+
 module.exports = router;

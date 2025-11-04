@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/x-icon" href="images/icono.ico">
   <title>GolApp</title>
-  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
+
 <body>
   <section class="hero">
-    <div class="logo">🏆</div>
+    <div class="logo"><img src="images/logo.png" alt="logo"></div>
     <h1>GolApp</h1>
     <p>Organizá tus torneos de fútbol de forma fácil, rápida y automática</p>
   </section>
@@ -31,9 +34,15 @@
         <p class="small">Usuarios demo: admin@golapp.com (admin123) • capitan@golapp.com (capitan123)</p>
       </div>
       <div class="card">
-        <h3>¿Eres nuevo?</h3>
-        <p>Registrate como Administrador y comenzá a gestionar torneos.</p>
-        <a class="btn green" href="#" onclick="demoRegister()">Registrarse</a>
+        <div class="form-row">
+          <h3>¿Eres nuevo?</h3>
+          <p>Registrate como Administrador y comenzá a gestionar torneos.</p>
+          <input id="regName" type="text" placeholder="Nombre" />
+          <input id="email-register" type="text" placeholder="Email" />
+          <input id="password-register" type="password" placeholder="Contraseña" />
+          <a class="btn green" href="#" onclick="registerUser()">Registrarse</a>
+        </div>
+
       </div>
     </div>
   </div>
@@ -42,4 +51,5 @@
 
   <script src="js/main.js"></script>
 </body>
+
 </html>
