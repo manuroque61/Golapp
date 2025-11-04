@@ -19,7 +19,13 @@ CREATE TABLE IF NOT EXISTS tournaments (
   name VARCHAR(120) NOT NULL,
   season YEAR NOT NULL,
   status ENUM('active','finished') DEFAULT 'active',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  admin_id INT NOT NULL,
+  total_rounds INT NOT NULL DEFAULT 1,
+  start_date DATE NULL,
+  match_time TIME NULL,
+  location VARCHAR(80) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Equipos

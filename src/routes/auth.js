@@ -16,7 +16,7 @@ function sign(user) {
 // REGISTRO DE USUARIO
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, team_id } = req.body;
 
     // Validaciones básicas
     if (!name || !email || !password) return res.status(400).json({ error: 'Todos los campos son obligatorios.' });
@@ -27,10 +27,20 @@ router.post('/register', async (req, res) => {
 
     const pass = await hashPassword(password);
     const userRole = role === 'captain' ? 'captain' : 'admin';
+    let teamId = null;
+    if (userRole === 'captain' && team_id) {
+      const [[team]] = await pool.query('SELECT id FROM teams WHERE id=?', [team_id]);
+      if (!team) return res.status(400).json({ error: 'Equipo no válido.' });
+      teamId = team.id;
+    }
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password_hash, role) VALUES (?,?,?,?)',
-      [name, email, pass, userRole]
+      'INSERT INTO users (name, email, password_hash, role, team_id) VALUES (?,?,?,?,?)',
+      [name, email, pass, userRole, teamId]
     );
+
+    if (userRole === 'captain' && teamId) {
+      await pool.query('UPDATE teams SET captain_user_id=? WHERE id=?', [result.insertId, teamId]);
+    }
 
     const [rows] = await pool.query('SELECT * FROM users WHERE id=?', [result.insertId]);
     const token = sign(rows[0]);

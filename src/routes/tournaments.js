@@ -3,13 +3,142 @@ const router = express.Router();
 const { pool } = require('../config/db');
 const { authRequired, roleRequired } = require('../middleware/auth');
 const { generateRoundRobin } = require('../utils/fixture');
+const { hashPassword } = require('../utils/hash');
+
+async function getTournamentForAdmin(tournamentId, adminId) {
+  const [[tournament]] = await pool.query(
+    'SELECT * FROM tournaments WHERE id=? AND admin_id=?',
+    [tournamentId, adminId]
+  );
+  return tournament;
+}
+
+async function getTeamForAdmin(teamId, adminId) {
+  const [[team]] = await pool.query(
+    `SELECT teams.* FROM teams
+     JOIN tournaments ON tournaments.id = teams.tournament_id
+     WHERE teams.id=? AND tournaments.admin_id=?`,
+    [teamId, adminId]
+  );
+  return team;
+}
+
+async function getMatchForAdmin(matchId, adminId) {
+  const [[match]] = await pool.query(
+    `SELECT matches.* FROM matches
+     JOIN tournaments ON tournaments.id = matches.tournament_id
+     WHERE matches.id=? AND tournaments.admin_id=?`,
+    [matchId, adminId]
+  );
+  return match;
+}
+
+async function getCaptainForAdmin(captainId, adminId) {
+  const [[captain]] = await pool.query(
+    `SELECT u.*, tm.admin_id FROM users u
+     LEFT JOIN teams t ON t.id = u.team_id
+     LEFT JOIN tournaments tm ON tm.id = t.tournament_id
+     WHERE u.id=? AND u.role='captain'`,
+    [captainId]
+  );
+  if (!captain) return null;
+  if (captain.admin_id && captain.admin_id !== adminId) return null;
+  return captain;
+}
+
+async function autoGenerateFixture(tournamentId) {
+  const [[tournament]] = await pool.query(
+    'SELECT id, total_rounds, start_date, match_time, location FROM tournaments WHERE id=?',
+    [tournamentId]
+  );
+  if (!tournament) return { generated: false, rounds: 0 };
+
+  const [teams] = await pool.query(
+    'SELECT id FROM teams WHERE tournament_id=? ORDER BY id ASC',
+    [tournamentId]
+  );
+  if (teams.length < 2) return { generated: false, rounds: 0 };
+
+  const [[existing]] = await pool.query(
+    'SELECT COUNT(*) AS total FROM matches WHERE tournament_id=?',
+    [tournamentId]
+  );
+  if (existing.total > 0) return { generated: false, rounds: 0 };
+
+  const teamIds = teams.map(t => t.id);
+  const baseRounds = generateRoundRobin(teamIds);
+  if (!baseRounds.length) return { generated: false, rounds: 0 };
+
+  const totalRounds = tournament.total_rounds || baseRounds.length;
+  const baseDate = tournament.start_date ? new Date(tournament.start_date) : new Date();
+  const matchTime = tournament.match_time || '16:00:00';
+  const location = tournament.location || 'Cancha A';
+
+  for (let roundIndex = 0; roundIndex < totalRounds; roundIndex++) {
+    const template = baseRounds[roundIndex % baseRounds.length];
+    const cycle = Math.floor(roundIndex / baseRounds.length);
+    const roundMatches = template.map(match =>
+      cycle % 2 === 1 ? { home: match.away, away: match.home } : match
+    );
+
+    const roundDate = new Date(baseDate);
+    roundDate.setDate(baseDate.getDate() + roundIndex * 7);
+
+    for (const m of roundMatches) {
+      await pool.query(
+        `INSERT INTO matches
+         (tournament_id, round, match_date, match_time, location, home_team_id, away_team_id)
+         VALUES (?,?,?,?,?,?,?)`,
+        [
+          tournamentId,
+          roundIndex + 1,
+          roundDate.toISOString().slice(0, 10),
+          matchTime,
+          location,
+          m.home,
+          m.away
+        ]
+      );
+    }
+  }
+
+  return { generated: true, rounds: totalRounds };
+}
 
 // Crear torneo
 router.post('/', authRequired, roleRequired('admin'), async (req, res) => {
   try {
-    const { name, season } = req.body;
-    const [r] = await pool.query('INSERT INTO tournaments (name, season) VALUES (?,?)', [name, season]);
-    res.json({ id: r.insertId, name, season, status: 'active' });
+    const { name, season, rounds, startDate, matchTime, location } = req.body;
+
+    if (!name || !season || !rounds) {
+      return res.status(400).json({ error: 'Nombre, temporada y cantidad de fechas son obligatorios' });
+    }
+
+    const [r] = await pool.query(
+      `INSERT INTO tournaments
+       (name, season, status, admin_id, total_rounds, start_date, match_time, location)
+       VALUES (?,?,?,?,?,?,?,?)`,
+      [
+        name,
+        season,
+        'active',
+        req.user.id,
+        rounds,
+        startDate || null,
+        matchTime || null,
+        location || null
+      ]
+    );
+    res.json({
+      id: r.insertId,
+      name,
+      season,
+      status: 'active',
+      total_rounds: rounds,
+      start_date: startDate,
+      match_time: matchTime,
+      location
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error al crear torneo' });
@@ -18,59 +147,265 @@ router.post('/', authRequired, roleRequired('admin'), async (req, res) => {
 
 // Listar torneos
 router.get('/', authRequired, async (req, res) => {
-  const [rows] = await pool.query('SELECT * FROM tournaments ORDER BY id DESC');
-  res.json(rows);
+  try {
+    if (req.user.role === 'admin') {
+      const [rows] = await pool.query(
+        'SELECT * FROM tournaments WHERE admin_id=? ORDER BY id DESC',
+        [req.user.id]
+      );
+      return res.json(rows);
+    }
+
+    if (req.user.role === 'captain') {
+      const [rows] = await pool.query(
+        `SELECT t.* FROM tournaments t
+         JOIN teams tm ON tm.tournament_id = t.id
+         WHERE tm.id = ?
+         ORDER BY t.id DESC`,
+        [req.user.team_id]
+      );
+      return res.json(rows);
+    }
+
+    res.json([]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al listar torneos' });
+  }
+});
+
+// Listado de capitanes del admin
+router.get('/captains', authRequired, roleRequired('admin'), async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT u.id, u.name, u.email, u.team_id, t.name AS team_name, tm.name AS tournament_name
+       FROM users u
+       LEFT JOIN teams t ON t.id = u.team_id
+       LEFT JOIN tournaments tm ON tm.id = t.tournament_id
+       WHERE u.role='captain' AND tm.admin_id = ?
+       ORDER BY u.id DESC`,
+      [req.user.id]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al listar capitanes' });
+  }
+});
+
+// Actualizar capitán
+router.put('/captains/:id', authRequired, roleRequired('admin'), async (req, res) => {
+  try {
+    const captainId = req.params.id;
+    const { name, email, password, team_id } = req.body;
+
+    const [[captain]] = await pool.query(
+      `SELECT u.*, t.tournament_id, tm.admin_id FROM users u
+       LEFT JOIN teams t ON t.id = u.team_id
+       LEFT JOIN tournaments tm ON tm.id = t.tournament_id
+       WHERE u.id=? AND u.role='captain'`,
+      [captainId]
+    );
+
+    if (!captain || captain.admin_id !== req.user.id) {
+      return res.status(404).json({ error: 'Capitán no encontrado' });
+    }
+
+    let passwordHash = captain.password_hash;
+    if (password) passwordHash = await hashPassword(password);
+
+    const targetTeamId = team_id || null;
+    if (targetTeamId) {
+      const team = await getTeamForAdmin(targetTeamId, req.user.id);
+      if (!team) return res.status(400).json({ error: 'Equipo inválido para este admin' });
+    }
+
+    await pool.query(
+      'UPDATE users SET name=?, email=?, password_hash=?, team_id=? WHERE id=?',
+      [
+        name ?? captain.name,
+        email ?? captain.email,
+        passwordHash,
+        targetTeamId,
+        captainId
+      ]
+    );
+
+    // Actualizar relación con equipos
+    await pool.query('UPDATE teams SET captain_user_id=NULL WHERE captain_user_id=?', [captainId]);
+    if (targetTeamId) {
+      await pool.query('UPDATE teams SET captain_user_id=? WHERE id=?', [captainId, targetTeamId]);
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al actualizar capitán' });
+  }
 });
 
 // Equipos del torneo
 router.get('/:id/teams', authRequired, async (req, res) => {
-  const [rows] = await pool.query('SELECT * FROM teams WHERE tournament_id=?', [req.params.id]);
-  res.json(rows);
+  try {
+    const tournamentId = req.params.id;
+
+    if (req.user.role === 'admin') {
+      const tournament = await getTournamentForAdmin(tournamentId, req.user.id);
+      if (!tournament) return res.status(403).json({ error: 'No autorizado' });
+    } else if (req.user.role === 'captain') {
+      const [[team]] = await pool.query(
+        'SELECT id FROM teams WHERE id=? AND tournament_id=?',
+        [req.user.team_id, tournamentId]
+      );
+      if (!team) return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT teams.*, u.name AS captain_name, u.email AS captain_email
+       FROM teams
+       LEFT JOIN users u ON u.id = teams.captain_user_id
+       WHERE teams.tournament_id=?
+       ORDER BY teams.name ASC`,
+      [tournamentId]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al listar equipos' });
+  }
 });
 
 // Crear equipo
 router.post('/:id/teams', authRequired, roleRequired('admin'), async (req, res) => {
-  const { name, emoji } = req.body;
-  const [r] = await pool.query('INSERT INTO teams (name, emoji, tournament_id) VALUES (?,?,?)', [name, emoji || '⚽', req.params.id]);
-  res.json({ id: r.insertId, name, emoji });
+  try {
+    const tournamentId = req.params.id;
+    const tournament = await getTournamentForAdmin(tournamentId, req.user.id);
+    if (!tournament) return res.status(403).json({ error: 'No autorizado' });
+
+    const { name, emoji } = req.body;
+    if (!name) return res.status(400).json({ error: 'Nombre obligatorio' });
+
+    const [r] = await pool.query(
+      'INSERT INTO teams (name, emoji, tournament_id) VALUES (?,?,?)',
+      [name, emoji || '⚽', tournamentId]
+    );
+
+    const fixtureInfo = await autoGenerateFixture(tournamentId);
+
+    res.json({
+      id: r.insertId,
+      name,
+      emoji,
+      fixtureGenerated: fixtureInfo.generated,
+      rounds: fixtureInfo.rounds
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al crear equipo' });
+  }
+});
+
+// Actualizar equipo
+router.put('/teams/:teamId', authRequired, roleRequired('admin'), async (req, res) => {
+  try {
+    const teamId = req.params.teamId;
+    const team = await getTeamForAdmin(teamId, req.user.id);
+    if (!team) return res.status(404).json({ error: 'Equipo no encontrado' });
+
+    const { name, emoji, captain_user_id } = req.body;
+    let captainId = captain_user_id || null;
+    if (captainId) {
+      const captain = await getCaptainForAdmin(captainId, req.user.id);
+      if (!captain) return res.status(400).json({ error: 'Capitán inválido' });
+    }
+    await pool.query(
+      'UPDATE teams SET name=?, emoji=?, captain_user_id=? WHERE id=?',
+      [name, emoji || '⚽', captainId, teamId]
+    );
+
+    if (captainId) {
+      await pool.query('UPDATE users SET team_id=? WHERE id=?', [teamId, captainId]);
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al actualizar equipo' });
+  }
 });
 
 // Agregar jugador
 router.post('/teams/:teamId/players', authRequired, roleRequired('admin','captain'), async (req, res) => {
-  const { name, number, position } = req.body;
-  const [r] = await pool.query('INSERT INTO players (team_id, number, name, position) VALUES (?,?,?,?)', [req.params.teamId, number, name, position]);
-  res.json({ id: r.insertId, name, number, position });
+  try {
+    const teamId = req.params.teamId;
+    if (req.user.role === 'admin') {
+      const team = await getTeamForAdmin(teamId, req.user.id);
+      if (!team) return res.status(403).json({ error: 'No autorizado' });
+    } else if (req.user.role === 'captain') {
+      if (parseInt(teamId, 10) !== req.user.team_id) {
+        return res.status(403).json({ error: 'No autorizado' });
+      }
+    }
+
+    const { name, number, position } = req.body;
+    const [r] = await pool.query(
+      'INSERT INTO players (team_id, number, name, position) VALUES (?,?,?,?)',
+      [teamId, number, name, position]
+    );
+    res.json({ id: r.insertId, name, number, position });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al agregar jugador' });
+  }
 });
 
 // Eliminar jugador
 router.delete('/players/:id', authRequired, roleRequired('admin','captain'), async (req,res) => {
-  await pool.query('DELETE FROM players WHERE id=?', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    const playerId = req.params.id;
+    const [[player]] = await pool.query(
+      `SELECT p.*, t.tournament_id, tm.admin_id FROM players p
+       JOIN teams t ON t.id = p.team_id
+       JOIN tournaments tm ON tm.id = t.tournament_id
+       WHERE p.id=?`,
+      [playerId]
+    );
+
+    if (!player) return res.status(404).json({ error: 'Jugador no encontrado' });
+
+    if (req.user.role === 'admin' && player.admin_id !== req.user.id) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    if (req.user.role === 'captain' && player.team_id !== req.user.team_id) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    await pool.query('DELETE FROM players WHERE id=?', [playerId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al eliminar jugador' });
+  }
 });
 
 // Generar fixture
 router.post('/:id/generate-fixture', authRequired, roleRequired('admin'), async (req, res) => {
   try {
     const tournamentId = parseInt(req.params.id, 10);
-    const { startDate, time = '16:00:00', location = 'Cancha A' } = req.body;
-    const [teams] = await pool.query('SELECT id FROM teams WHERE tournament_id=?', [tournamentId]);
-    const teamIds = teams.map(t => t.id);
-    if (teamIds.length < 2) return res.status(400).json({ error: 'Se necesitan al menos 2 equipos' });
+    const tournament = await getTournamentForAdmin(tournamentId, req.user.id);
+    if (!tournament) return res.status(403).json({ error: 'No autorizado' });
 
-    const rounds = generateRoundRobin(teamIds);
-    // Guardar partidos
-    let date = new Date(startDate || Date.now());
-    for (let r = 0; r < rounds.length; r++) {
-      for (const m of rounds[r]) {
-        await pool.query(
-          'INSERT INTO matches (tournament_id, round, match_date, match_time, location, home_team_id, away_team_id) VALUES (?,?,?,?,?,?,?)',
-          [tournamentId, r+1, date.toISOString().slice(0,10), time, location, m.home, m.away]
-        );
-      }
-      // próxima fecha: +7 días
-      date.setDate(date.getDate()+7);
-    }
-    res.json({ ok: true, rounds: rounds.length });
+    const { startDate, time = '16:00:00', location = 'Cancha A' } = req.body;
+
+    await pool.query('DELETE FROM matches WHERE tournament_id=?', [tournamentId]);
+    await pool.query(
+      'UPDATE tournaments SET start_date=?, match_time=?, location=? WHERE id=?',
+      [startDate || tournament.start_date, time, location, tournamentId]
+    );
+
+    const info = await autoGenerateFixture(tournamentId);
+    if (!info.generated) return res.status(400).json({ error: 'No se pudo generar el fixture (verifica equipos)' });
+    res.json({ ok: true, rounds: info.rounds });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'No se pudo generar el fixture' });
@@ -79,12 +414,54 @@ router.post('/:id/generate-fixture', authRequired, roleRequired('admin'), async 
 
 // Registrar resultado
 router.post('/matches/:id/result', authRequired, roleRequired('admin','captain'), async (req,res) => {
-  const { home_goals, away_goals } = req.body;
-  await pool.query(
-    'UPDATE matches SET home_goals=?, away_goals=?, status="played" WHERE id=?',
-    [home_goals, away_goals, req.params.id]
-  );
-  res.json({ ok: true });
+  try {
+    const matchId = req.params.id;
+    const { home_goals, away_goals } = req.body;
+
+    if (req.user.role === 'admin') {
+      const match = await getMatchForAdmin(matchId, req.user.id);
+      if (!match) return res.status(403).json({ error: 'No autorizado' });
+    } else if (req.user.role === 'captain') {
+      const [[match]] = await pool.query(
+        'SELECT * FROM matches WHERE id=? AND (home_team_id=? OR away_team_id=?)',
+        [matchId, req.user.team_id, req.user.team_id]
+      );
+      if (!match) return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    await pool.query(
+      'UPDATE matches SET home_goals=?, away_goals=?, status="played" WHERE id=?',
+      [home_goals, away_goals, matchId]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al registrar resultado' });
+  }
+});
+
+// Listado completo de partidos del torneo (para admin)
+router.get('/:id/matches', authRequired, roleRequired('admin'), async (req, res) => {
+  try {
+    const tournamentId = req.params.id;
+    const tournament = await getTournamentForAdmin(tournamentId, req.user.id);
+    if (!tournament) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.query(
+      `SELECT m.*, th.name AS home_name, th.emoji AS home_emoji,
+              ta.name AS away_name, ta.emoji AS away_emoji
+       FROM matches m
+       JOIN teams th ON th.id = m.home_team_id
+       JOIN teams ta ON ta.id = m.away_team_id
+       WHERE m.tournament_id=?
+       ORDER BY m.round ASC, m.match_date, m.match_time`,
+      [tournamentId]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al listar partidos' });
+  }
 });
 
 // Tabla de posiciones
@@ -125,10 +502,24 @@ router.get('/:id/upcoming', async (req,res)=>{
 // ✏️ Editar torneo existente
 router.put('/:id', authRequired, roleRequired('admin'), async (req, res) => {
   try {
-    const { name, season, status } = req.body;
+    const tournament = await getTournamentForAdmin(req.params.id, req.user.id);
+    if (!tournament) return res.status(403).json({ error: 'No autorizado' });
+
+    const { name, season, status, total_rounds, start_date, match_time, location } = req.body;
     await pool.query(
-      'UPDATE tournaments SET name=?, season=?, status=? WHERE id=?',
-      [name, season, status, req.params.id]
+      `UPDATE tournaments
+       SET name=?, season=?, status=?, total_rounds=?, start_date=?, match_time=?, location=?
+       WHERE id=?`,
+      [
+        name,
+        season,
+        status,
+        total_rounds ?? tournament.total_rounds,
+        start_date ?? tournament.start_date,
+        match_time ?? tournament.match_time,
+        location ?? tournament.location,
+        req.params.id
+      ]
     );
     res.json({ ok: true });
   } catch (e) {

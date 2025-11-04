@@ -3,7 +3,11 @@ USE golapp;
 -- Passwords hash se insertarán desde Node si corrés seeds por script,
 -- pero dejamos algunos datos de ejemplo mínimos.
 
-INSERT INTO tournaments (name, season) VALUES ('Torneo Apertura', 2025);
+INSERT INTO users (name, email, password_hash, role, team_id)
+VALUES ('Admin Demo', 'admin@golapp.com', '$2a$10$37KG0wvcmPZAIq9VlUbAv.2C.aJvN6R0VEeyMNrswzTu6/ZBbjpUG', 'admin', NULL);
+
+INSERT INTO tournaments (name, season, status, admin_id, total_rounds, start_date, match_time, location)
+VALUES ('Torneo Apertura', 2025, 'active', 1, 3, '2025-01-10', '16:00:00', 'Cancha Central');
 
 INSERT INTO teams (name, emoji, tournament_id) VALUES 
 ('Los Tigres FC', '🐯', 1),
