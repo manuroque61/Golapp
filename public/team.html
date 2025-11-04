@@ -21,27 +21,35 @@
       <button onclick="mostrarSeccion('notificaciones', this)">Notificaciones</button>
     </div>
 
-
-    <div class="card">
-      <h3>Agregar Nuevo Jugador</h3>
-      <div class="form-row">
-        <input id="pname" type="text" placeholder="Nombre del jugador" />
-        <input id="pnum" type="number" placeholder="N°" />
-        <select id="ppos">
-          <option>Delantero</option>
-          <option>Mediocampista</option>
-          <option>Defensor</option>
-          <option>Arquero</option>
-        </select>
+    <div id="plantillaSection">
+      <div class="card">
+        <h3>Agregar Nuevo Jugador</h3>
+        <div class="form-row">
+          <input id="pname" type="text" placeholder="Nombre del jugador" />
+          <input id="pnum" type="number" placeholder="N°" />
+          <select id="ppos">
+            <option value="Delantero">Delantero</option>
+            <option value="Mediocampista">Mediocampista</option>
+            <option value="Defensor">Defensor</option>
+            <option value="Arquero">Arquero</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button class="btn green" onclick="agregar()">+ Agregar Jugador</button>
+        </div>
       </div>
-      <div style="margin-top:12px">
-        <button class="btn green" onclick="agregar()">+ Agregar Jugador</button>
+
+      <div class="card">
+        <h3>Jugadores</h3>
+        <div id="players" class="list"></div>
       </div>
     </div>
 
-    <div class="card">
-      <h3>Jugadores</h3>
-      <div id="players" class="list"></div>
+    <div id="infoSection" style="display:none">
+      <div class="card">
+        <h3 id="infoTitle">Resumen</h3>
+        <div id="infoContent" class="list"></div>
+      </div>
     </div>
   </div>
 

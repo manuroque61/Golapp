@@ -26,6 +26,7 @@
       <div class="card">
         <h3>Iniciar sesión</h3>
         <p>Administradores y capitanes acceden a su panel de gestión.</p>
+        <div id="loginMessage" class="alert" hidden></div>
         <div class="form-row">
           <input id="email" type="text" placeholder="Email" />
           <input id="password" type="password" placeholder="Contraseña" />
@@ -37,10 +38,11 @@
         <div class="form-row">
           <h3>¿Eres nuevo?</h3>
           <p>Registrate como Administrador y comenzá a gestionar torneos.</p>
+          <div id="registerMessage" class="alert" hidden></div>
           <input id="regName" type="text" placeholder="Nombre" />
-          <input id="email-register" type="text" placeholder="Email" />
-          <input id="password-register" type="password" placeholder="Contraseña" />
-          <a class="btn green" href="#" onclick="registerUser()">Registrarse</a>
+          <input id="regEmail" type="email" placeholder="Email" />
+          <input id="regPassword" type="password" placeholder="Contraseña" />
+          <button class="btn green" onclick="registerUser()">Registrarse</button>
         </div>
 
       </div>

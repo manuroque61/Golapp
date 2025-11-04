@@ -204,4 +204,4 @@ function mostrarSeccion(tipo, el) {
   if (tipo === 'plantilla') listar();
 }
 
-window.addEventListener('load', listar);
+window.addEventListener('load', init);

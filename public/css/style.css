@@ -158,6 +158,26 @@ body{
   color:#1976d2
 }
 
+.toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin:20px 0;
+}
+
+.toolbar .nav{
+  margin:0;
+}
+
+.tournament-picker{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:220px;
+}
+
 .list{
   display:flex;
   flex-direction:column;
@@ -246,6 +266,12 @@ input[type="text"], input[type="number"], input[type="date"], input[type="passwo
   grid-template-columns:1fr;
 }
 
+.form-actions{
+  margin-top:12px;
+  display:flex;
+  justify-content:flex-end;
+}
+
 .kpis{
   display:grid;
   grid-template-columns:repeat(4,1fr);
@@ -307,6 +333,42 @@ input, select { margin-bottom: 8px; }
 .table-responsive{
   max-height:420px;
   overflow:auto;
+}
+
+.summary-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:16px;
+}
+
+.summary-card{
+  background:#f9fbff;
+  border-radius:12px;
+  padding:16px;
+  box-shadow:var(--shadow);
+}
+
+.summary-card.full{
+  grid-column:1 / -1;
+}
+
+.summary-card h4{
+  margin:0 0 8px;
+}
+
+.summary-card .stat{
+  font-size:28px;
+  font-weight:700;
+  margin-bottom:4px;
+}
+
+.summary-card ol{
+  margin:0;
+  padding-left:18px;
+}
+
+.summary-card ol li{
+  margin-bottom:4px;
 }
 
 .results-grid{
