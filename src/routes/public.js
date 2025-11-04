@@ -111,6 +111,28 @@ router.get('/teams/:teamId/matches', async (req, res) => {
   }
 });
 
+/** 4) Últimos resultados por torneo */
+router.get('/tournaments/:id/results', async (req, res) => {
+  try {
+    const tournamentId = req.params.id;
+    const [rows] = await pool.query(
+      `SELECT m.*, th.name AS home_name, th.emoji AS home_emoji,
+              ta.name AS away_name, ta.emoji AS away_emoji
+       FROM matches m
+       JOIN teams th ON th.id = m.home_team_id
+       JOIN teams ta ON ta.id = m.away_team_id
+       WHERE m.tournament_id = ? AND m.status = 'played'
+       ORDER BY m.match_date DESC, m.match_time DESC
+       LIMIT 10`,
+      [tournamentId]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al cargar resultados del torneo' });
+  }
+});
+
 module.exports = router;
 
 
