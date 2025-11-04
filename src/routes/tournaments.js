@@ -33,6 +33,18 @@ async function getMatchForAdmin(matchId, adminId) {
   return match;
 }
 
+async function getPlayerWithContext(playerId) {
+  const [[player]] = await pool.query(
+    `SELECT p.*, t.tournament_id, tm.admin_id
+     FROM players p
+     JOIN teams t ON t.id = p.team_id
+     JOIN tournaments tm ON tm.id = t.tournament_id
+     WHERE p.id=?`,
+    [playerId]
+  );
+  return player;
+}
+
 async function getCaptainForAdmin(captainId, adminId) {
   const [[captain]] = await pool.query(
     `SELECT u.*, tm.admin_id FROM users u
@@ -334,6 +346,57 @@ router.put('/teams/:teamId', authRequired, roleRequired('admin'), async (req, re
   }
 });
 
+// Obtener detalle de un equipo (para admin/capitán)
+router.get('/teams/:teamId', authRequired, roleRequired('admin','captain'), async (req, res) => {
+  try {
+    const teamId = parseInt(req.params.teamId, 10);
+    if (!teamId) return res.status(400).json({ error: 'Equipo inválido' });
+
+    if (req.user.role === 'admin') {
+      const team = await getTeamForAdmin(teamId, req.user.id);
+      if (!team) return res.status(403).json({ error: 'No autorizado' });
+      return res.json(team);
+    }
+
+    if (req.user.team_id !== teamId) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const [[team]] = await pool.query('SELECT * FROM teams WHERE id=?', [teamId]);
+    if (!team) return res.status(404).json({ error: 'Equipo no encontrado' });
+    res.json(team);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al obtener equipo' });
+  }
+});
+
+// Listar jugadores de un equipo
+router.get('/teams/:teamId/players', authRequired, roleRequired('admin','captain'), async (req, res) => {
+  try {
+    const teamId = parseInt(req.params.teamId, 10);
+    if (!teamId) return res.status(400).json({ error: 'Equipo inválido' });
+
+    if (req.user.role === 'admin') {
+      const team = await getTeamForAdmin(teamId, req.user.id);
+      if (!team) return res.status(403).json({ error: 'No autorizado' });
+    } else if (req.user.role === 'captain') {
+      if (teamId !== req.user.team_id) {
+        return res.status(403).json({ error: 'No autorizado' });
+      }
+    }
+
+    const [rows] = await pool.query(
+      'SELECT id, team_id, number, name, position FROM players WHERE team_id=? ORDER BY number ASC, name ASC',
+      [teamId]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al listar jugadores' });
+  }
+});
+
 // Agregar jugador
 router.post('/teams/:teamId/players', authRequired, roleRequired('admin','captain'), async (req, res) => {
   try {
@@ -348,6 +411,7 @@ router.post('/teams/:teamId/players', authRequired, roleRequired('admin','captai
     }
 
     const { name, number, position } = req.body;
+    if (!name) return res.status(400).json({ error: 'El nombre es obligatorio' });
     const [r] = await pool.query(
       'INSERT INTO players (team_id, number, name, position) VALUES (?,?,?,?)',
       [teamId, number, name, position]
@@ -359,18 +423,42 @@ router.post('/teams/:teamId/players', authRequired, roleRequired('admin','captai
   }
 });
 
+// Actualizar jugador
+router.put('/players/:id', authRequired, roleRequired('admin','captain'), async (req, res) => {
+  try {
+    const playerId = parseInt(req.params.id, 10);
+    if (!playerId) return res.status(400).json({ error: 'Jugador inválido' });
+
+    const player = await getPlayerWithContext(playerId);
+    if (!player) return res.status(404).json({ error: 'Jugador no encontrado' });
+
+    if (req.user.role === 'admin' && player.admin_id !== req.user.id) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    if (req.user.role === 'captain' && player.team_id !== req.user.team_id) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const { name, number, position } = req.body;
+    if (!name) return res.status(400).json({ error: 'El nombre es obligatorio' });
+
+    await pool.query(
+      'UPDATE players SET name=?, number=?, position=? WHERE id=?',
+      [name, number, position, playerId]
+    );
+
+    res.json({ id: playerId, name, number, position, team_id: player.team_id });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al actualizar jugador' });
+  }
+});
+
 // Eliminar jugador
 router.delete('/players/:id', authRequired, roleRequired('admin','captain'), async (req,res) => {
   try {
     const playerId = req.params.id;
-    const [[player]] = await pool.query(
-      `SELECT p.*, t.tournament_id, tm.admin_id FROM players p
-       JOIN teams t ON t.id = p.team_id
-       JOIN tournaments tm ON tm.id = t.tournament_id
-       WHERE p.id=?`,
-      [playerId]
-    );
-
+    const player = await getPlayerWithContext(playerId);
     if (!player) return res.status(404).json({ error: 'Jugador no encontrado' });
 
     if (req.user.role === 'admin' && player.admin_id !== req.user.id) {

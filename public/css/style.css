@@ -82,7 +82,7 @@ body{
   margin-top:0
 }
 
-.btn{
+.btn{ 
   display:inline-block;
   padding:12px 16px;
   border:none;
@@ -90,6 +90,11 @@ body{
   cursor:pointer;
   text-decoration:none;
   text-align:center
+}
+
+.btn.sm{
+  padding:8px 12px;
+  font-size:0.85rem;
 }
 
 .btn.primary{
@@ -104,6 +109,15 @@ body{
 .btn.green{
   background:var(--green);
   color:#fff
+}
+
+.btn.red{
+  background:#c62828;
+  color:#fff;
+}
+
+.btn.red:hover{
+  background:#b71c1c;
 }
 
 .btn.gold{
@@ -160,6 +174,23 @@ body{
   justify-content:space-between;
   gap:12px;
   flex-wrap:wrap
+}
+
+.item .info{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:600;
+}
+
+.item .info span{
+  color:var(--muted);
+  font-weight:500;
+}
+
+.item .actions{
+  display:flex;
+  gap:8px;
 }
 
 .item .teams{
