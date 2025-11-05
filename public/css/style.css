@@ -225,6 +225,18 @@ body{
   align-items:center;
   gap:8px
 }
+.item .teams .team.highlight{color:var(--primary)}
+.item .teams .team .emoji{font-size:1.4rem}
+.fixture-team-right{justify-content:flex-end;text-align:right}
+.fixture-item{flex-direction:column;align-items:stretch}
+.fixture-item .teams{justify-content:space-between}
+.fixture-score{font-size:24px;font-weight:700;color:var(--text);min-width:80px;text-align:center}
+.fixture-meta{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+.fixture-status{padding:2px 8px;border-radius:999px;font-weight:600;font-size:.75rem;text-transform:uppercase}
+.fixture-status.done{background:#e8f5e9;color:#2e7d32}
+.fixture-status.upcoming{background:#eef6ff;color:var(--primary)}
+.table-team{display:flex;align-items:center;gap:8px;font-weight:600}
+.table-team .emoji{font-size:1.3rem}
 
 .table{
   width:100%;
@@ -313,6 +325,7 @@ input, select { margin-bottom: 8px; }
   position: fixed; inset: 0; background: rgba(0,0,0,.5);
   display: none; align-items: center; justify-content: center; z-index: 999;
 }
+.modal-backdrop.show{display:flex}
 .modal{
   width: 100%; max-width: 520px; background: #fff; border-radius: 14px;
   box-shadow: 0 12px 30px rgba(0,0,0,.2); padding: 16px;
@@ -321,6 +334,12 @@ input, select { margin-bottom: 8px; }
 .modal h3{margin:0}
 .modal footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
 .modal .btn{min-width:120px}
+.modal-body{display:flex;flex-direction:column;gap:12px}
+.modal-field{display:flex;flex-direction:column;gap:6px;font-size:.95rem}
+.modal-field span{font-weight:600;color:var(--text)}
+.modal-error{background:#fdecea;color:#b71c1c;border-radius:10px;padding:10px 12px;margin-bottom:12px}
+
+.section{margin-bottom:24px}
 
 /* Buttons look */
 .btn.danger{background:#c62828;color:#fff}
