@@ -420,13 +420,10 @@ input, select { margin-bottom: 8px; }
 }
 
 .input-small{
-  width:82px;
-  padding:10px 12px;
+  width:60px;
+  padding:6px 8px;
   text-align:center;
-  font-weight:700;
-  font-size:20px;
-  border:2px solid var(--primary);
-  border-radius:10px;
+  font-weight:600;
   color:var(--text);
 }
 
