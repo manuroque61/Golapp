@@ -4,6 +4,9 @@ const { pool } = require('../config/db');
 const { authRequired, roleRequired } = require('../middleware/auth');
 const { generateRoundRobin } = require('../utils/fixture');
 const { hashPassword } = require('../utils/hash');
+const { notifyUpcomingMatches } = require('../utils/notifications');
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 
 async function getTournamentForAdmin(tournamentId, adminId) {
   const [[tournament]] = await pool.query(
@@ -387,10 +390,46 @@ router.get('/teams/:teamId/players', authRequired, roleRequired('admin','captain
     }
 
     const [rows] = await pool.query(
-      'SELECT id, team_id, number, name, position FROM players WHERE team_id=? ORDER BY number ASC, name ASC',
+      'SELECT id, team_id, number, name, position, email FROM players WHERE team_id=? ORDER BY number ASC, name ASC',
       [teamId]
     );
-    res.json(rows);
+
+    const players = rows.map(row => ({ ...row, is_captain: false }));
+
+    const [[captain]] = await pool.query(
+      `SELECT u.id, u.name, u.email
+       FROM teams t
+       JOIN users u ON u.id = t.captain_user_id
+       WHERE t.id=?`,
+      [teamId]
+    );
+
+    if (captain?.id && captain.email) {
+      const lowerEmail = captain.email.trim().toLowerCase();
+      const existingIndex = players.findIndex(
+        p => typeof p.email === 'string' && p.email.trim().toLowerCase() === lowerEmail
+      );
+
+      if (existingIndex >= 0) {
+        players[existingIndex] = {
+          ...players[existingIndex],
+          is_captain: true,
+          position: players[existingIndex].position || 'Capitán'
+        };
+      } else {
+        players.unshift({
+          id: `captain-${captain.id}`,
+          team_id: teamId,
+          number: null,
+          name: captain.name,
+          position: 'Capitán',
+          email: captain.email,
+          is_captain: true
+        });
+      }
+    }
+
+    res.json(players);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error al listar jugadores' });
@@ -410,13 +449,16 @@ router.post('/teams/:teamId/players', authRequired, roleRequired('admin','captai
       }
     }
 
-    const { name, number, position } = req.body;
+    const { name, number, position, email } = req.body;
     if (!name) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    if (email && !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: 'El email del jugador no es válido' });
+    }
     const [r] = await pool.query(
-      'INSERT INTO players (team_id, number, name, position) VALUES (?,?,?,?)',
-      [teamId, number, name, position]
+      'INSERT INTO players (team_id, number, name, position, email) VALUES (?,?,?,?,?)',
+      [teamId, number, name, position, email || null]
     );
-    res.json({ id: r.insertId, name, number, position });
+    res.json({ id: r.insertId, name, number, position, email: email || null, team_id: parseInt(teamId, 10) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error al agregar jugador' });
@@ -439,15 +481,18 @@ router.put('/players/:id', authRequired, roleRequired('admin','captain'), async 
       return res.status(403).json({ error: 'No autorizado' });
     }
 
-    const { name, number, position } = req.body;
+    const { name, number, position, email } = req.body;
     if (!name) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    if (email && !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: 'El email del jugador no es válido' });
+    }
 
     await pool.query(
-      'UPDATE players SET name=?, number=?, position=? WHERE id=?',
-      [name, number, position, playerId]
+      'UPDATE players SET name=?, number=?, position=?, email=? WHERE id=?',
+      [name, number, position, email || null, playerId]
     );
 
-    res.json({ id: playerId, name, number, position, team_id: player.team_id });
+    res.json({ id: playerId, name, number, position, email: email || null, team_id: player.team_id });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error al actualizar jugador' });
@@ -473,6 +518,30 @@ router.delete('/players/:id', authRequired, roleRequired('admin','captain'), asy
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error al eliminar jugador' });
+  }
+});
+
+router.post('/teams/:teamId/notify-upcoming', authRequired, roleRequired('admin','captain'), async (req, res) => {
+  try {
+    const teamId = parseInt(req.params.teamId, 10);
+    if (!teamId) return res.status(400).json({ error: 'Equipo inválido' });
+
+    if (req.user.role === 'admin') {
+      const team = await getTeamForAdmin(teamId, req.user.id);
+      if (!team) return res.status(403).json({ error: 'No autorizado' });
+    } else if (req.user.role === 'captain' && req.user.team_id !== teamId) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const result = await notifyUpcomingMatches({ teamId });
+    res.json(result);
+  } catch (e) {
+    if (['MAILER_NOT_CONFIGURED', 'NO_RECIPIENTS', 'NO_UPCOMING_MATCHES'].includes(e.code)) {
+      const status = e.code === 'MAILER_NOT_CONFIGURED' ? 503 : 400;
+      return res.status(status).json({ error: e.message });
+    }
+    console.error(e);
+    res.status(500).json({ error: 'Error al enviar notificaciones' });
   }
 });
 
