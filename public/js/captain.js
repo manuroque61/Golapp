@@ -3,8 +3,6 @@ const token = localStorage.getItem('token');
 const storedTeamId = parseInt(localStorage.getItem('team_id'), 10);
 const teamId = Number.isInteger(storedTeamId) ? storedTeamId : 1;
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
-
 let currentTeam = null;
 let playersCache = [];
 let sections = {};
@@ -14,7 +12,6 @@ let modalBackdrop = null;
 let modalForm = null;
 let modalTitle = null;
 let modalNameInput = null;
-let modalEmailInput = null;
 let modalNumberInput = null;
 let modalPositionInput = null;
 let modalError = null;
@@ -121,25 +118,18 @@ function renderPlayers(players) {
     const actions = document.createElement('div');
     actions.className = 'actions';
 
-    if (player.is_captain) {
-      const hint = document.createElement('span');
-      hint.className = 'small muted';
-      hint.textContent = 'Gestioná al capitán desde la sección de capitanes.';
-      actions.appendChild(hint);
-    } else {
-      const editBtn = document.createElement('button');
-      editBtn.className = 'btn primary sm';
-      editBtn.textContent = 'Editar';
-      editBtn.addEventListener('click', () => openPlayerModal(player));
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn primary sm';
+    editBtn.textContent = 'Editar';
+    editBtn.addEventListener('click', () => openPlayerModal(player));
 
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'btn red sm';
-      deleteBtn.textContent = 'Eliminar';
-      deleteBtn.addEventListener('click', () => eliminarJugador(player));
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn red sm';
+    deleteBtn.textContent = 'Eliminar';
+    deleteBtn.addEventListener('click', () => eliminarJugador(player));
 
-      actions.appendChild(editBtn);
-      actions.appendChild(deleteBtn);
-    }
+    actions.appendChild(editBtn);
+    actions.appendChild(deleteBtn);
 
     item.appendChild(info);
     item.appendChild(actions);
@@ -160,15 +150,10 @@ function setModalError(message = '') {
 
 function openPlayerModal(player) {
   if (!modalBackdrop || !modalForm) return;
-  if (player?.is_captain) {
-    alert('El capitán se gestiona desde la sección de capitanes.');
-    return;
-  }
   editingPlayer = player;
   modalTitle.textContent = player ? `Editar ${player.name}` : 'Editar jugador';
   setModalError();
   modalNameInput.value = player?.name || '';
-  modalEmailInput.value = player?.email || '';
   modalNumberInput.value = player?.number ?? '';
   modalPositionInput.value = player?.position || '';
   modalBackdrop.classList.add('show');
@@ -335,6 +320,250 @@ function renderTablaPosiciones(rows) {
   });
 }
 
+function createTeamNode(emoji, name, highlight) {
+  const team = document.createElement('div');
+  team.className = 'team';
+  if (highlight) team.classList.add('highlight');
+
+  const icon = document.createElement('span');
+  icon.className = 'emoji';
+  icon.textContent = emoji || '⚽';
+
+  const label = document.createElement('span');
+  label.textContent = name;
+
+  team.appendChild(icon);
+  team.appendChild(label);
+  return team;
+}
+
+function renderFixture(matches) {
+  if (!fixtureContent) fixtureContent = document.getElementById('fixtureContent');
+  if (!fixtureContent) return;
+
+  fixtureContent.innerHTML = '';
+
+  if (!matches?.length) {
+    fixtureContent.innerHTML = '<p class="small">Todavía no hay partidos programados para este equipo.</p>';
+    return;
+  }
+
+  matches.forEach(match => {
+    const item = document.createElement('div');
+    item.className = 'item fixture-item';
+
+    const meta = document.createElement('div');
+    meta.className = 'fixture-meta';
+    const label = document.createElement('span');
+    label.textContent = formatMatchMeta(match);
+    meta.appendChild(label);
+
+    const [statusLabel, statusClass] = matchStatusLabel(match.status);
+    if (statusLabel) {
+      const badge = document.createElement('span');
+      badge.className = `fixture-status ${statusClass}`;
+      badge.textContent = statusLabel;
+      meta.appendChild(badge);
+    }
+
+    const line = document.createElement('div');
+    line.className = 'teams';
+
+    const home = createTeamNode(match.home_emoji, match.home_name, match.home_team_id === teamId);
+    const score = document.createElement('div');
+    score.className = 'fixture-score';
+    if (match.status === 'played') {
+      const homeGoals = match.home_goals ?? 0;
+      const awayGoals = match.away_goals ?? 0;
+      score.textContent = `${homeGoals} - ${awayGoals}`;
+    } else if (match.match_time) {
+      score.textContent = match.match_time.slice(0, 5);
+    } else {
+      score.textContent = '—';
+      score.title = 'Horario a confirmar';
+    }
+    const away = createTeamNode(match.away_emoji, match.away_name, match.away_team_id === teamId);
+    away.classList.add('fixture-team-right');
+
+    line.appendChild(home);
+    line.appendChild(score);
+    line.appendChild(away);
+
+    item.appendChild(meta);
+    item.appendChild(line);
+    fixtureContent.appendChild(item);
+  });
+}
+
+function renderTablaPosiciones(rows) {
+  if (!standingsBody) standingsBody = document.getElementById('tablaPosicionesBody');
+  if (!standingsBody) return;
+
+  standingsBody.innerHTML = '';
+
+  if (!rows?.length) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.innerHTML = '<td colspan="10" class="small">Todavía no hay resultados cargados en este torneo.</td>';
+    standingsBody.appendChild(emptyRow);
+    return;
+  }
+
+  rows.forEach((row, index) => {
+    const tr = document.createElement('tr');
+    if (row.team_id === teamId) tr.classList.add('highlight');
+
+    const positionCell = document.createElement('td');
+    positionCell.textContent = index + 1;
+
+    const teamCell = document.createElement('td');
+    const teamWrapper = document.createElement('div');
+    teamWrapper.className = 'table-team';
+    if (row.team_id === teamId) teamWrapper.classList.add('highlight-team');
+    const teamEmoji = document.createElement('span');
+    teamEmoji.className = 'emoji';
+    teamEmoji.textContent = row.emoji || '⚽';
+    const teamName = document.createElement('span');
+    teamName.textContent = row.team;
+    teamWrapper.appendChild(teamEmoji);
+    teamWrapper.appendChild(teamName);
+    teamCell.appendChild(teamWrapper);
+
+    const stats = ['PJ', 'G', 'E', 'P', 'GF', 'GC', 'DG', 'PTS'];
+    const statCells = stats.map(stat => {
+      const td = document.createElement('td');
+      td.textContent = row[stat];
+      return td;
+    });
+
+    tr.appendChild(positionCell);
+    tr.appendChild(teamCell);
+    statCells.forEach(td => tr.appendChild(td));
+    standingsBody.appendChild(tr);
+  });
+}
+
+function createTeamNode(emoji, name, highlight) {
+  const team = document.createElement('div');
+  team.className = 'team';
+  if (highlight) team.classList.add('highlight');
+
+  const icon = document.createElement('span');
+  icon.className = 'emoji';
+  icon.textContent = emoji || '⚽';
+
+  const label = document.createElement('span');
+  label.textContent = name;
+
+  team.appendChild(icon);
+  team.appendChild(label);
+  return team;
+}
+
+function renderFixture(matches) {
+  if (!fixtureContent) fixtureContent = document.getElementById('fixtureContent');
+  if (!fixtureContent) return;
+
+  fixtureContent.innerHTML = '';
+
+  if (!matches?.length) {
+    fixtureContent.innerHTML = '<p class="small">Todavía no hay partidos programados para este equipo.</p>';
+    return;
+  }
+
+  matches.forEach(match => {
+    const item = document.createElement('div');
+    item.className = 'item fixture-item';
+
+    const meta = document.createElement('div');
+    meta.className = 'fixture-meta';
+    const label = document.createElement('span');
+    label.textContent = formatMatchMeta(match);
+    meta.appendChild(label);
+
+    const [statusLabel, statusClass] = matchStatusLabel(match.status);
+    if (statusLabel) {
+      const badge = document.createElement('span');
+      badge.className = `fixture-status ${statusClass}`;
+      badge.textContent = statusLabel;
+      meta.appendChild(badge);
+    }
+
+    const line = document.createElement('div');
+    line.className = 'teams';
+
+    const home = createTeamNode(match.home_emoji, match.home_name, match.home_team_id === teamId);
+    const score = document.createElement('div');
+    score.className = 'fixture-score';
+    if (match.status === 'played') {
+      const homeGoals = match.home_goals ?? 0;
+      const awayGoals = match.away_goals ?? 0;
+      score.textContent = `${homeGoals} - ${awayGoals}`;
+    } else if (match.match_time) {
+      score.textContent = match.match_time.slice(0, 5);
+    } else {
+      score.textContent = '—';
+      score.title = 'Horario a confirmar';
+    }
+    const away = createTeamNode(match.away_emoji, match.away_name, match.away_team_id === teamId);
+    away.classList.add('fixture-team-right');
+
+    line.appendChild(home);
+    line.appendChild(score);
+    line.appendChild(away);
+
+    item.appendChild(meta);
+    item.appendChild(line);
+    fixtureContent.appendChild(item);
+  });
+}
+
+function renderTablaPosiciones(rows) {
+  if (!standingsBody) standingsBody = document.getElementById('tablaPosicionesBody');
+  if (!standingsBody) return;
+
+  standingsBody.innerHTML = '';
+
+  if (!rows?.length) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.innerHTML = '<td colspan="10" class="small">Todavía no hay resultados cargados en este torneo.</td>';
+    standingsBody.appendChild(emptyRow);
+    return;
+  }
+
+  rows.forEach((row, index) => {
+    const tr = document.createElement('tr');
+    if (row.team_id === teamId) tr.classList.add('highlight');
+
+    const positionCell = document.createElement('td');
+    positionCell.textContent = index + 1;
+
+    const teamCell = document.createElement('td');
+    const teamWrapper = document.createElement('div');
+    teamWrapper.className = 'table-team';
+    if (row.team_id === teamId) teamWrapper.classList.add('highlight-team');
+    const teamEmoji = document.createElement('span');
+    teamEmoji.className = 'emoji';
+    teamEmoji.textContent = row.emoji || '⚽';
+    const teamName = document.createElement('span');
+    teamName.textContent = row.team;
+    teamWrapper.appendChild(teamEmoji);
+    teamWrapper.appendChild(teamName);
+    teamCell.appendChild(teamWrapper);
+
+    const stats = ['PJ', 'G', 'E', 'P', 'GF', 'GC', 'DG', 'PTS'];
+    const statCells = stats.map(stat => {
+      const td = document.createElement('td');
+      td.textContent = row[stat];
+      return td;
+    });
+
+    tr.appendChild(positionCell);
+    tr.appendChild(teamCell);
+    statCells.forEach(td => tr.appendChild(td));
+    standingsBody.appendChild(tr);
+  });
+}
+
 async function agregar() {
   try {
     if (!token) return;
@@ -372,7 +601,6 @@ async function agregar() {
 
 function limpiarFormulario() {
   document.getElementById('pname').value = '';
-  document.getElementById('pemail').value = '';
   document.getElementById('pnum').value = '';
   document.getElementById('ppos').selectedIndex = 0;
 }
@@ -392,23 +620,14 @@ async function listar() {
 
 async function handleModalSubmit(event) {
   event.preventDefault();
-  if (!editingPlayer || editingPlayer.is_captain) {
-    setModalError('El capitán se gestiona desde la sección de capitanes.');
-    return;
-  }
+  if (!editingPlayer) return;
 
   const name = modalNameInput.value.trim();
-  const emailValue = modalEmailInput.value.trim();
   const numberValue = modalNumberInput.value.trim();
   const positionValue = modalPositionInput.value.trim();
 
   if (!name) {
     setModalError('El nombre no puede estar vacío.');
-    return;
-  }
-
-  if (emailValue && !emailRegex.test(emailValue)) {
-    setModalError('Ingresá un email válido.');
     return;
   }
 
@@ -422,7 +641,7 @@ async function handleModalSubmit(event) {
     setModalError();
     await apiFetch(`${API}/tournaments/players/${editingPlayer.id}`, {
       method: 'PUT',
-      body: JSON.stringify({ name, email: emailValue || null, number, position: positionValue || null })
+      body: JSON.stringify({ name, number, position: positionValue || null })
     });
     closePlayerModal();
     await listar();
@@ -518,30 +737,7 @@ async function cargarPosiciones() {
 function mostrarNotificaciones() {
   const content = document.getElementById('notificacionesContent');
   if (content) {
-    content.textContent = 'Enviá un recordatorio para compartir los próximos partidos por mail.';
-  }
-}
-
-async function enviarRecordatorio() {
-  const content = document.getElementById('notificacionesContent');
-  const button = document.getElementById('sendReminderBtn');
-  try {
-    if (!token) return;
-    if (button) button.disabled = true;
-    if (content) content.textContent = 'Enviando notificación...';
-    const result = await apiFetch(`${API}/tournaments/teams/${teamId}/notify-upcoming`, {
-      method: 'POST'
-    });
-    if (content) {
-      content.textContent = result?.message || `Se enviaron ${result?.sent || 0} recordatorios.`;
-    }
-  } catch (e) {
-    if (content) content.textContent = e.message;
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.blur();
-    }
+    content.textContent = 'No hay notificaciones nuevas.';
   }
 }
 
@@ -550,7 +746,6 @@ function registrarEventosModal() {
   modalForm = document.getElementById('playerModalForm');
   modalTitle = document.getElementById('playerModalTitle');
   modalNameInput = document.getElementById('modalName');
-  modalEmailInput = document.getElementById('modalEmail');
   modalNumberInput = document.getElementById('modalNumber');
   modalPositionInput = document.getElementById('modalPosition');
   modalError = document.getElementById('playerModalError');
@@ -584,8 +779,6 @@ async function init() {
   ensureSections();
   fixtureContent = document.getElementById('fixtureContent');
   standingsBody = document.getElementById('tablaPosicionesBody');
-  const reminderBtn = document.getElementById('sendReminderBtn');
-  if (reminderBtn) reminderBtn.addEventListener('click', enviarRecordatorio);
   await cargarCabeceraEquipo();
   mostrarSeccion('plantilla', document.getElementById('bPlantilla'));
 }
