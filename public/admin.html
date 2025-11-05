@@ -11,7 +11,10 @@
 
 <body>
   <div class="container">
-    <h2>Panel de Administración</h2>
+    <div class="header">
+      <h2>Panel de Administración</h2>
+      <button class="btn red" type="button" onclick="logout()">Cerrar sesión</button>
+    </div>
 
     <!-- Barra de navegación -->
     <div class="nav">
@@ -92,12 +95,12 @@
       <div class="form-row" style="grid-template-columns:1fr;">
         <select id="partidosTorneo" onchange="cargarPartidos()"></select>
       </div>
-      <div class="results-grid">
-        <div>
+      <div class="results-stack">
+        <div class="results-section">
           <h4>Próximos partidos</h4>
           <div id="listaPartidos" class="list"></div>
         </div>
-        <div>
+        <div class="results-section results-section--wide">
           <h4>Cargar resultado</h4>
           <div class="table-responsive">
             <table class="table" id="tablaResultados">

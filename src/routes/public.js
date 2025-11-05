@@ -9,6 +9,34 @@ router.get('/search-teams', async (req,res)=>{
 });
 
 
+router.get('/teams/:teamId/info', async (req, res) => {
+  try {
+    const teamId = parseInt(req.params.teamId, 10);
+    if (!teamId) {
+      return res.status(400).json({ error: 'Equipo inválido' });
+    }
+
+    const [[team]] = await pool.query(
+      `SELECT t.id, t.name, t.emoji, t.tournament_id,
+              tr.name AS tournament_name, tr.season
+         FROM teams t
+         LEFT JOIN tournaments tr ON tr.id = t.tournament_id
+        WHERE t.id = ?`,
+      [teamId]
+    );
+
+    if (!team) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    res.json(team);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Error al cargar información del equipo' });
+  }
+});
+
+
 /** 1) Listar torneos públicamente (sin login) */
 router.get('/tournaments', async (req, res) => {
   try {
