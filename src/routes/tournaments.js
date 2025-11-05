@@ -536,13 +536,8 @@ router.post('/teams/:teamId/notify-upcoming', authRequired, roleRequired('admin'
     const result = await notifyUpcomingMatches({ teamId });
     res.json(result);
   } catch (e) {
-    if (['MAILER_NOT_CONFIGURED', 'NO_RECIPIENTS', 'NO_UPCOMING_MATCHES', 'MAILER_SEND_FAILED'].includes(e.code)) {
-      const status =
-        e.code === 'MAILER_NOT_CONFIGURED'
-          ? 503
-          : e.code === 'MAILER_SEND_FAILED'
-          ? 502
-          : 400;
+    if (['MAILER_NOT_CONFIGURED', 'NO_RECIPIENTS', 'NO_UPCOMING_MATCHES'].includes(e.code)) {
+      const status = e.code === 'MAILER_NOT_CONFIGURED' ? 503 : 400;
       return res.status(status).json({ error: e.message });
     }
     console.error(e);

@@ -153,7 +153,6 @@ async function notifyUpcomingMatches({ teamId }) {
   const subject = `Próximos partidos de ${team.name}`;
   let sent = 0;
   const failed = [];
-  let lastError = null;
 
   for (const recipient of recipients) {
     try {
@@ -163,23 +162,8 @@ async function notifyUpcomingMatches({ teamId }) {
       if (response.accepted?.length) sent += 1;
       else failed.push(recipient.email);
     } catch (error) {
-      if (error?.code === 'MAILER_NOT_CONFIGURED') {
-        throw error;
-      }
-      lastError = error;
       failed.push(recipient.email);
     }
-  }
-
-  if (sent === 0 && failed.length === recipients.length && lastError) {
-    throw Object.assign(
-      new Error(
-        lastError?.message
-          ? `No se pudieron enviar las notificaciones. ${lastError.message}`
-          : 'No se pudieron enviar las notificaciones. Revisá la configuración del servidor de correo.'
-      ),
-      { code: lastError?.code || 'MAILER_SEND_FAILED' }
-    );
   }
 
   const message = failed.length
