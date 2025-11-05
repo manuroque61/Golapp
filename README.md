@@ -36,6 +36,7 @@ Proyecto completo con **Node.js + MySQL** y **Frontend simple (HTML, CSS, JS)**.
 - **Sorteo automático de fixture** (round robin).
 - Carga de resultados y **tabla de posiciones** automática.
 - Vista pública (próximos partidos, tabla).
+- Recordatorios por correo para próximos partidos de cada equipo.
 
 > Todo el código está **comentado**, pensado para ser fácil de modificar.
 
@@ -44,6 +45,24 @@ Proyecto completo con **Node.js + MySQL** y **Frontend simple (HTML, CSS, JS)**.
 - **DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME**: credenciales de tu servidor MySQL. Por defecto el proyecto intentará conectarse a `root@localhost:3306/golapp` tal como está definido en los scripts de `sql/`.
 - **JWT_SECRET**: clave utilizada para firmar los tokens. Recordá cambiarla en tu `.env` antes de desplegar.
 - **PORT** _(opcional)_: puerto donde Express levantará la app. Si no lo definís usa `3000`.
+- **SMTP_HOST / SMTP_PORT / SMTP_SECURE / SMTP_USER / SMTP_PASS / SMTP_FROM / SMTP_ALLOW_INVALID** _(opcional)_: credenciales
+  del servidor SMTP utilizado para enviar notificaciones de próximos partidos. Si no configurás estos valores, la función
+  devolverá un error indicando que el correo no está disponible.
+
+### Notificaciones por mail
+
+1. **Configurá las variables SMTP** en tu `.env` con los datos del proveedor que prefieras (por ejemplo, el host, puerto y
+   usuario que te dé tu servicio de mail transaccional). En modo desarrollo podés activar `SMTP_ALLOW_INVALID=true` si tu
+   certificado es autofirmado.
+2. **Reiniciá el servidor** después de guardar el `.env` para que Express tome la nueva configuración.
+3. **Cargá los emails de tus jugadores y capitán** desde el panel del equipo (botón “Editar jugador”). Las direcciones
+   ingresadas se validan antes de guardarse.
+4. **Enviá el recordatorio manualmente**: en el panel del capitán está el botón “Enviar recordatorio por mail”, que invoca el
+   endpoint `POST /api/tournaments/teams/:teamId/notify-upcoming`. No hay un proceso automático/cron; cada envío debe ser
+   solicitado desde esa acción (o haciendo una llamada autenticada al endpoint).
+
+Si falta algún dato (SMTP sin configurar, equipo sin partidos próximos o sin destinatarios válidos) la respuesta mostrará el
+motivo para que puedas corregirlo.
 
 Cuando inicies el servidor verás un mensaje de verificación de la conexión a MySQL. Si hay un error, revisá la configuración anterior y asegurate de que la base exista (`sql/schema.sql`).
 
