@@ -1,15 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../config/db');
+const { pool, connectionConfig } = require('../config/db');
+const { ensurePlayersEmailColumn } = require('../utils/dbMigrations');
 
 router.get('/players', async (req,res)=>{
   const team = parseInt(req.query.team,10);
   if(!team) return res.json([]);
 
-  const [rows] = await pool.query(
-    'SELECT id, team_id, number, name, position, email FROM players WHERE team_id=? ORDER BY number ASC, name ASC',
-    [team]
-  );
+  let rows;
+  try {
+    [rows] = await pool.query(
+      'SELECT id, team_id, number, name, position, email FROM players WHERE team_id=? ORDER BY number ASC, name ASC',
+      [team]
+    );
+  } catch (error) {
+    if (error?.code === 'ER_BAD_FIELD_ERROR') {
+      await ensurePlayersEmailColumn(pool, connectionConfig.database);
+      [rows] = await pool.query(
+        'SELECT id, team_id, number, name, position, email FROM players WHERE team_id=? ORDER BY number ASC, name ASC',
+        [team]
+      );
+    } else {
+      throw error;
+    }
+  }
 
   const players = rows.map(row => ({ ...row, is_captain: false }));
 

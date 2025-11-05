@@ -15,4 +15,4 @@ const runMigrations = async (pool, connectionConfig) => {
   await ensurePlayersEmailColumn(pool, connectionConfig.database);
 };
 
-module.exports = { runMigrations };
+module.exports = { runMigrations, ensurePlayersEmailColumn };
