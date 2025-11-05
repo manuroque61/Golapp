@@ -392,4 +392,41 @@ input, select { margin-bottom: 8px; }
 .input-small{
   width:60px;
   padding:6px 8px;
+  text-align:center;
+  font-weight:600;
+  color:var(--text);
+}
+
+.hidden{
+  display:none !important;
+}
+
+.highlight-team{
+  font-weight:700;
+  color:var(--primary);
+}
+
+.table tr.highlight{
+  background:#eef6ff;
+}
+
+.players-list{
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+
+.players-list li{
+  padding:6px 0;
+  border-bottom:1px solid #eef2f7;
+}
+
+.players-list li:last-child{
+  border-bottom:none;
+}
+
+.players-list span{
+  color:var(--muted);
+  font-weight:500;
+  margin-left:6px;
 }
