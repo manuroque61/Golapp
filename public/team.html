@@ -13,6 +13,7 @@
   <div class="container">
     <div class="header">
       <h2 id="teamTitle">Mi Equipo</h2>
+      <button class="btn red" type="button" onclick="logout()">Cerrar sesión</button>
     </div>
     <div class="nav">
       <button id="bPlantilla" class="active" onclick="mostrarSeccion('plantilla', this)">Mi Plantilla</button>
@@ -21,11 +22,12 @@
       <button onclick="mostrarSeccion('notificaciones', this)">Notificaciones</button>
     </div>
 
-    <div id="plantillaSection">
+    <div id="plantillaSection" class="section">
       <div class="card">
         <h3>Agregar Nuevo Jugador</h3>
         <div class="form-row">
           <input id="pname" type="text" placeholder="Nombre del jugador" />
+          <input id="pemail" type="email" placeholder="Email del jugador" />
           <input id="pnum" type="number" placeholder="N°" />
           <select id="ppos">
             <option value="Delantero">Delantero</option>
@@ -45,11 +47,84 @@
       </div>
     </div>
 
-    <div id="infoSection" style="display:none">
+    <div id="fixtureSection" class="section hidden">
       <div class="card">
-        <h3 id="infoTitle">Resumen</h3>
-        <div id="infoContent" class="list"></div>
+        <h3>Fixture</h3>
+        <div id="fixtureContent" class="list"></div>
       </div>
+    </div>
+
+    <div id="posicionesSection" class="section hidden">
+      <div class="card">
+        <h3>Tabla de posiciones</h3>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Pos.</th>
+                <th>Equipo</th>
+                <th>PJ</th>
+                <th>G</th>
+                <th>E</th>
+                <th>P</th>
+                <th>GF</th>
+                <th>GC</th>
+                <th>DG</th>
+                <th>PTS</th>
+              </tr>
+            </thead>
+            <tbody id="tablaPosicionesBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="notificacionesSection" class="section hidden">
+      <div class="card">
+        <h3>Notificaciones</h3>
+        <p class="small" id="notificacionesContent">No hay notificaciones nuevas.</p>
+        <button class="btn primary" id="sendReminderBtn" type="button">Enviar recordatorio por mail</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="playerModalBackdrop" class="modal-backdrop" role="presentation">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="playerModalTitle">
+      <header>
+        <h3 id="playerModalTitle">Editar jugador</h3>
+        <button type="button" class="btn gray sm" id="playerModalClose">Cerrar</button>
+      </header>
+      <form id="playerModalForm">
+        <div id="playerModalError" class="modal-error hidden" role="alert"></div>
+        <div class="modal-body">
+          <label class="modal-field">
+            <span>Nombre</span>
+            <input id="modalName" type="text" required />
+          </label>
+          <label class="modal-field">
+            <span>Email</span>
+            <input id="modalEmail" type="email" />
+          </label>
+          <label class="modal-field">
+            <span>Número</span>
+            <input id="modalNumber" type="number" min="0" />
+          </label>
+          <label class="modal-field">
+            <span>Posición</span>
+            <select id="modalPosition">
+              <option value="">Seleccionar posición</option>
+              <option value="Delantero">Delantero</option>
+              <option value="Mediocampista">Mediocampista</option>
+              <option value="Defensor">Defensor</option>
+              <option value="Arquero">Arquero</option>
+            </select>
+          </label>
+        </div>
+        <footer>
+          <button type="button" class="btn gray" id="playerModalCancel">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar cambios</button>
+        </footer>
+      </form>
     </div>
   </div>
 
