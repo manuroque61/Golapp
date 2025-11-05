@@ -7,6 +7,7 @@
   --bg:#f6f7fb;
   --text:#1f2937;
   --muted:#6b7280;
+  --surface-hover:#eef3ff;
   --shadow: 0 8px 20px rgba(0,0,0,.08);
 }
 
@@ -386,7 +387,17 @@ input, select { margin-bottom: 8px; }
 .result-inputs{
   display:flex;
   align-items:center;
-  gap:6px;
+  gap:10px;
+  background:var(--surface-hover);
+  padding:8px 12px;
+  border-radius:12px;
+  justify-content:center;
+}
+
+.result-inputs span{
+  font-size:22px;
+  font-weight:700;
+  color:var(--primary);
 }
 
 .input-small{

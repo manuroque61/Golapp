@@ -87,6 +87,12 @@ async function crearTorneo(e) {
   const matchTime = timeInput ? `${timeInput}:00` : null;
   const location = document.getElementById('torneoCancha').value.trim();
 
+  const today = new Date().toISOString().slice(0, 10);
+  if (startDate && startDate < today) {
+    alert('La fecha de inicio no puede ser anterior a hoy.');
+    return;
+  }
+
   const r = await fetch(API + '/tournaments', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -530,7 +536,19 @@ async function cargarPartidos() {
     return;
   }
 
-  matchesCache.forEach(match => {
+  const pendingResults = matchesCache.filter(match => {
+    const goalsMissing = match.home_goals == null || match.away_goals == null;
+    return match.status !== 'played' && goalsMissing;
+  });
+
+  if (!pendingResults.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="5" class="small">Todos los partidos de este torneo ya tienen resultado.</td>';
+    tbody.appendChild(tr);
+    return;
+  }
+
+  pendingResults.forEach(match => {
     const tr = document.createElement('tr');
     const homeVal = match.home_goals ?? '';
     const awayVal = match.away_goals ?? '';
@@ -592,6 +610,10 @@ async function cargarTorneosEnSelects() {
 /* ---------------------------- AUTOLOAD ---------------------------- */
 window.addEventListener('load', () => {
   cargarTorneos();
+  const torneoStartInput = document.getElementById('torneoStart');
+  if (torneoStartInput) {
+    torneoStartInput.min = new Date().toISOString().slice(0, 10);
+  }
 });
 
 window.logout = logout;
