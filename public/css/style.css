@@ -461,13 +461,10 @@ input, select { margin-bottom: 8px; }
 }
 
 .input-small{
-  width:82px;
-  padding:10px 12px;
+  width:60px;
+  padding:6px 8px;
   text-align:center;
-  font-weight:700;
-  font-size:20px;
-  border:2px solid var(--primary);
-  border-radius:10px;
+  font-weight:600;
   color:var(--text);
 }
 
@@ -499,35 +496,8 @@ input, select { margin-bottom: 8px; }
   border-bottom:none;
 }
 
-.players-list .player-heading{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-
-.players-list strong{
-  font-weight:600;
-}
-
-.players-list .player-position{
-  display:block;
+.players-list span{
   color:var(--muted);
   font-weight:500;
-  margin-top:4px;
-}
-
-.players-list .player-email{
-  display:block;
-  color:var(--muted);
-  font-size:12px;
-  margin-top:2px;
-}
-
-.players-list .badge{
-  padding:3px 8px;
-  background:#eef6ff;
-  color:var(--primary);
-  border-radius:999px;
-  font-size:12px;
-  font-weight:600;
+  margin-left:6px;
 }

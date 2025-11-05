@@ -10,18 +10,6 @@ async function fetchJson(url) {
   return data;
 }
 
-const ESCAPE_MAP = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;'
-};
-
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, ch => ESCAPE_MAP[ch] || ch);
-}
-
 function showCard(card, visible) {
   if (!card) return;
   card.classList.toggle('hidden', !visible);
@@ -55,24 +43,12 @@ function renderPlayersList(players) {
     return '<p class="small">No hay jugadores cargados.</p>';
   }
   const items = players
-    .map(player => {
-      const numberLabel = player.number ? `${player.number} - ` : '';
-      const position = player.position ? `<span class="player-position">${escapeHtml(player.position)}</span>` : '';
-      const emailLine = player.email
-        ? `<span class="player-email">${escapeHtml(player.email)}</span>`
-        : '<span class="player-email muted">Sin email</span>';
-      const role = player.is_captain ? '<span class="badge">Capitán</span>' : '';
-      return `
-        <li>
-          <div class="player-heading">
-            <strong>${numberLabel}${escapeHtml(player.name)}</strong>
-            ${role}
-          </div>
-          ${position}
-          ${emailLine}
-        </li>
-      `;
-    })
+    .map(player => `
+      <li>
+        <strong>${player.number ? player.number + ' - ' : ''}${player.name}</strong>
+        ${player.position ? `<span>${player.position}</span>` : ''}
+      </li>
+    `)
     .join('');
   return `<ul class="players-list">${items}</ul>`;
 }
