@@ -80,12 +80,17 @@ function renderPlayers(players) {
   playersCache.forEach(player => {
     const item = document.createElement('div');
     item.className = 'item';
+    if (player.is_captain) item.classList.add('captain-player');
 
     const info = document.createElement('div');
     info.className = 'info';
 
     const number = document.createElement('strong');
-    number.textContent = player.number ? `#${player.number}` : 'Sin Nº';
+    if (player.is_captain) {
+      number.textContent = 'Capitán';
+    } else {
+      number.textContent = player.number ? `#${player.number}` : 'Sin Nº';
+    }
 
     const name = document.createElement('span');
     name.textContent = player.name;
@@ -95,9 +100,20 @@ function renderPlayers(players) {
     const position = document.createElement('span');
     position.textContent = player.position || 'Sin posición';
 
+    const email = document.createElement('span');
+    email.className = 'player-email';
+    email.textContent = player.email || 'Sin email';
+
     info.appendChild(number);
     info.appendChild(name);
+    if (player.is_captain) {
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = 'Capitán';
+      info.appendChild(badge);
+    }
     info.appendChild(position);
+    info.appendChild(email);
 
     const actions = document.createElement('div');
     actions.className = 'actions';
@@ -304,15 +320,143 @@ function renderTablaPosiciones(rows) {
   });
 }
 
+function createTeamNode(emoji, name, highlight) {
+  const team = document.createElement('div');
+  team.className = 'team';
+  if (highlight) team.classList.add('highlight');
+
+  const icon = document.createElement('span');
+  icon.className = 'emoji';
+  icon.textContent = emoji || '⚽';
+
+  const label = document.createElement('span');
+  label.textContent = name;
+
+  team.appendChild(icon);
+  team.appendChild(label);
+  return team;
+}
+
+function renderFixture(matches) {
+  if (!fixtureContent) fixtureContent = document.getElementById('fixtureContent');
+  if (!fixtureContent) return;
+
+  fixtureContent.innerHTML = '';
+
+  if (!matches?.length) {
+    fixtureContent.innerHTML = '<p class="small">Todavía no hay partidos programados para este equipo.</p>';
+    return;
+  }
+
+  matches.forEach(match => {
+    const item = document.createElement('div');
+    item.className = 'item fixture-item';
+
+    const meta = document.createElement('div');
+    meta.className = 'fixture-meta';
+    const label = document.createElement('span');
+    label.textContent = formatMatchMeta(match);
+    meta.appendChild(label);
+
+    const [statusLabel, statusClass] = matchStatusLabel(match.status);
+    if (statusLabel) {
+      const badge = document.createElement('span');
+      badge.className = `fixture-status ${statusClass}`;
+      badge.textContent = statusLabel;
+      meta.appendChild(badge);
+    }
+
+    const line = document.createElement('div');
+    line.className = 'teams';
+
+    const home = createTeamNode(match.home_emoji, match.home_name, match.home_team_id === teamId);
+    const score = document.createElement('div');
+    score.className = 'fixture-score';
+    if (match.status === 'played') {
+      const homeGoals = match.home_goals ?? 0;
+      const awayGoals = match.away_goals ?? 0;
+      score.textContent = `${homeGoals} - ${awayGoals}`;
+    } else if (match.match_time) {
+      score.textContent = match.match_time.slice(0, 5);
+    } else {
+      score.textContent = '—';
+      score.title = 'Horario a confirmar';
+    }
+    const away = createTeamNode(match.away_emoji, match.away_name, match.away_team_id === teamId);
+    away.classList.add('fixture-team-right');
+
+    line.appendChild(home);
+    line.appendChild(score);
+    line.appendChild(away);
+
+    item.appendChild(meta);
+    item.appendChild(line);
+    fixtureContent.appendChild(item);
+  });
+}
+
+function renderTablaPosiciones(rows) {
+  if (!standingsBody) standingsBody = document.getElementById('tablaPosicionesBody');
+  if (!standingsBody) return;
+
+  standingsBody.innerHTML = '';
+
+  if (!rows?.length) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.innerHTML = '<td colspan="10" class="small">Todavía no hay resultados cargados en este torneo.</td>';
+    standingsBody.appendChild(emptyRow);
+    return;
+  }
+
+  rows.forEach((row, index) => {
+    const tr = document.createElement('tr');
+    if (row.team_id === teamId) tr.classList.add('highlight');
+
+    const positionCell = document.createElement('td');
+    positionCell.textContent = index + 1;
+
+    const teamCell = document.createElement('td');
+    const teamWrapper = document.createElement('div');
+    teamWrapper.className = 'table-team';
+    if (row.team_id === teamId) teamWrapper.classList.add('highlight-team');
+    const teamEmoji = document.createElement('span');
+    teamEmoji.className = 'emoji';
+    teamEmoji.textContent = row.emoji || '⚽';
+    const teamName = document.createElement('span');
+    teamName.textContent = row.team;
+    teamWrapper.appendChild(teamEmoji);
+    teamWrapper.appendChild(teamName);
+    teamCell.appendChild(teamWrapper);
+
+    const stats = ['PJ', 'G', 'E', 'P', 'GF', 'GC', 'DG', 'PTS'];
+    const statCells = stats.map(stat => {
+      const td = document.createElement('td');
+      td.textContent = row[stat];
+      return td;
+    });
+
+    tr.appendChild(positionCell);
+    tr.appendChild(teamCell);
+    statCells.forEach(td => tr.appendChild(td));
+    standingsBody.appendChild(tr);
+  });
+}
+
 async function agregar() {
   try {
     if (!token) return;
     const name = document.getElementById('pname').value.trim();
+    const email = document.getElementById('pemail').value.trim();
     const numberValue = document.getElementById('pnum').value.trim();
     const position = document.getElementById('ppos').value;
 
     if (!name) {
       alert('Por favor ingresa el nombre del jugador.');
+      return;
+    }
+
+    if (email && !emailRegex.test(email)) {
+      alert('Ingresá un email válido.');
       return;
     }
 
@@ -324,7 +468,7 @@ async function agregar() {
 
     await apiFetch(`${API}/tournaments/teams/${teamId}/players`, {
       method: 'POST',
-      body: JSON.stringify({ name, number, position })
+      body: JSON.stringify({ name, email: email || null, number, position })
     });
     limpiarFormulario();
     await listar();
@@ -385,6 +529,10 @@ async function handleModalSubmit(event) {
 }
 
 async function eliminarJugador(player) {
+  if (player?.is_captain) {
+    alert('No podés eliminar al capitán desde esta sección.');
+    return;
+  }
   if (!confirm(`¿Seguro que deseas eliminar a ${player.name}?`)) return;
   try {
     if (!token) return;

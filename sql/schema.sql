@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS players (
   number INT,
   name VARCHAR(120) NOT NULL,
   position VARCHAR(40),
+  email VARCHAR(120),
   FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 );
 
