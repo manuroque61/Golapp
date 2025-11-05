@@ -18,24 +18,25 @@
       <div id="results" class="list" style="margin-top:12px"></div>
     </div>
 
-    <div class="toolbar">
-      <div class="nav">
-        <button id="tab1" class="active" onclick="loadUpcoming()">Próximos Partidos</button>
-        <button id="tab2" onclick="loadTable()">Tabla de Posiciones</button>
-      </div>
-      <div class="tournament-picker">
-        <label for="tournamentSelect" class="small">Torneo</label>
-        <select id="tournamentSelect" onchange="onTournamentChange(this.value)"></select>
-      </div>
+    <div id="teamCard" class="card hidden">
+      <h3 id="teamTitle"></h3>
+      <p id="teamTournament" class="small"></p>
+      <p id="teamPosition" class="small"></p>
     </div>
 
-    <div class="card">
-      <div id="content"></div>
+    <div id="fixtureCard" class="card hidden">
+      <h3>Fixture de tu equipo</h3>
+      <div id="fixtureContent"></div>
     </div>
 
-    <div class="card">
-      <h3>Resumen del torneo</h3>
-      <div id="summaryContent" class="summary-grid"></div>
+    <div id="playersCard" class="card hidden">
+      <h3>Jugadores</h3>
+      <div id="playersContent"></div>
+    </div>
+
+    <div id="tableCard" class="card hidden">
+      <h3>Tabla del torneo</h3>
+      <div id="tableContent"></div>
     </div>
   </div>
 

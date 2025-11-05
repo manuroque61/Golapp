@@ -19,6 +19,11 @@ function authHeaders() {
   return { 'Authorization': 'Bearer ' + token };
 }
 
+function logout() {
+  localStorage.removeItem('token');
+  location.href = 'index.html';
+}
+
 /* ---------------------- NAVEGACIÓN ENTRE SECCIONES ---------------------- */
 function mostrarSeccion(nombre) {
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
@@ -589,3 +594,4 @@ window.addEventListener('load', () => {
   cargarTorneos();
 });
 
+window.logout = logout;
