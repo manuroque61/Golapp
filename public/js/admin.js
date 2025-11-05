@@ -486,6 +486,7 @@ async function cargarPartidos() {
     select.innerHTML = '<option value="">No hay torneos</option>';
     document.getElementById('listaPartidos').innerHTML = '<p class="small">Sin datos</p>';
     document.querySelector('#tablaResultados tbody').innerHTML = '';
+    limpiarTablaPosiciones('No hay tabla disponible.');
     return;
   }
   const current = select.dataset.selected || torneos[0].id;
@@ -503,9 +504,11 @@ async function cargarPartidos() {
   if (!r.ok) {
     document.getElementById('listaPartidos').innerHTML = '<p class="small">No hay partidos disponibles.</p>';
     document.querySelector('#tablaResultados tbody').innerHTML = '';
+    limpiarTablaPosiciones('No se pudo cargar la tabla de posiciones.');
     return;
   }
   matchesCache = await r.json();
+  await cargarTablaPosiciones(torneoId);
 
   const upcomingContainer = document.getElementById('listaPartidos');
   upcomingContainer.innerHTML = '';
@@ -591,6 +594,58 @@ async function guardarResultado(matchId) {
   } else {
     alert(d.error || 'No se pudo guardar el resultado');
   }
+}
+
+async function cargarTablaPosiciones(torneoId) {
+  const tbody = document.querySelector('#tablaPosiciones tbody');
+  const empty = document.getElementById('tablaPosicionesEmpty');
+  if (!tbody || !empty) return;
+
+  tbody.innerHTML = '';
+  empty.textContent = 'Cargando tabla...';
+  empty.style.display = 'block';
+
+  try {
+    const r = await fetch(`${API}/tournaments/${torneoId}/table`, { headers: authHeaders() });
+    if (!r.ok) throw new Error('Respuesta inválida');
+    const tabla = await r.json();
+    if (!Array.isArray(tabla) || !tabla.length) {
+      empty.textContent = 'Todavía no hay resultados suficientes para armar la tabla.';
+      return;
+    }
+
+    empty.style.display = 'none';
+    empty.textContent = '';
+
+    tabla.forEach((fila, index) => {
+      const tr = document.createElement('tr');
+      const nombreEquipo = `${fila.emoji ? fila.emoji + ' ' : ''}${fila.team}`;
+      tr.innerHTML = `
+        <td>${index + 1}</td>
+        <td>${nombreEquipo}</td>
+        <td>${fila.PJ ?? 0}</td>
+        <td>${fila.G ?? 0}</td>
+        <td>${fila.E ?? 0}</td>
+        <td>${fila.P ?? 0}</td>
+        <td>${fila.GF ?? 0}</td>
+        <td>${fila.GC ?? 0}</td>
+        <td>${fila.DG ?? 0}</td>
+        <td>${fila.PTS ?? 0}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch (error) {
+    console.error(error);
+    empty.textContent = 'No se pudo cargar la tabla de posiciones.';
+  }
+}
+
+function limpiarTablaPosiciones(message = '') {
+  const tbody = document.querySelector('#tablaPosiciones tbody');
+  const empty = document.getElementById('tablaPosicionesEmpty');
+  if (!tbody || !empty) return;
+  tbody.innerHTML = '';
+  empty.textContent = message;
+  empty.style.display = message ? 'block' : 'none';
 }
 
 /* ---------------------------- 🔧 UTILIDADES ---------------------------- */
