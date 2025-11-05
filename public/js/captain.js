@@ -24,6 +24,14 @@ if (!token) {
   window.location.href = '/';
 }
 
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('team_id');
+  window.location.href = 'index.html';
+}
+
+window.logout = logout;
+
 async function apiFetch(url, options = {}) {
   const opts = { ...options };
   opts.headers = {
