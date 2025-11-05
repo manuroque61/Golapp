@@ -47,6 +47,7 @@ CREATE TABLE players (
   number INT NULL,
   name VARCHAR(120) NOT NULL,
   position VARCHAR(40) NULL,
+  email VARCHAR(120) NULL,
   CONSTRAINT fk_players_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 );
 
@@ -85,7 +86,7 @@ INSERT INTO teams (name, emoji, tournament_id) VALUES
 ('Águilas United', '🦅', 1),
 ('Pumas Dorados', '🦒', 1);
 
-INSERT INTO players (team_id, number, name, position) VALUES
-(1, 10, 'Diego Pérez', 'Delantero'),
-(1, 7, 'Manuel Rodríguez', 'Mediocampista'),
-(1, 1, 'Andrés García', 'Arquero');
+INSERT INTO players (team_id, number, name, position, email) VALUES
+(1, 10, 'Diego Pérez', 'Delantero', 'diego.perez@example.com'),
+(1, 7, 'Manuel Rodríguez', 'Mediocampista', 'manuel.rodriguez@example.com'),
+(1, 1, 'Andrés García', 'Arquero', 'andres.garcia@example.com');
