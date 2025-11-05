@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const dotenv = require('dotenv');
 const { pool, testConnection, connectionConfig } = require('./config/db');
+const { runMigrations } = require('./utils/dbMigrations');
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -34,6 +35,7 @@ app.get('/api/health', async (req, res) => {
 async function bootstrap() {
   try {
     await testConnection();
+    await runMigrations(pool, connectionConfig);
     console.log(
       `✅ MySQL conectado (${connectionConfig.user}@${connectionConfig.host}:${connectionConfig.port}/${connectionConfig.database})`
     );
