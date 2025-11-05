@@ -1,4 +1,9 @@
 const API = location.origin + '/api';
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidEmail(value) {
+  return emailRegex.test(value);
+}
 
 function showMessage(id, message = '', type = 'info') {
   const el = document.getElementById(id);
@@ -21,6 +26,11 @@ async function login() {
 
   if (!email || !password) {
     showMessage('loginMessage', 'Ingresa tu email y contraseña para continuar.', 'error');
+    return;
+  }
+
+  if (!isValidEmail(email)) {
+    showMessage('loginMessage', 'Ingresá un correo electrónico válido.', 'error');
     return;
   }
 
@@ -60,6 +70,11 @@ async function registerUser() {
 
   if (!name || !email || !password) {
     showMessage('registerMessage', 'Completá nombre, email y contraseña.', 'error');
+    return;
+  }
+
+  if (!isValidEmail(email)) {
+    showMessage('registerMessage', 'Ingresá un correo electrónico válido.', 'error');
     return;
   }
 

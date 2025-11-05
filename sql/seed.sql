@@ -16,8 +16,8 @@ INSERT INTO teams (name, emoji, tournament_id) VALUES
 ('Pumas Dorados', '🦒', 1);
 
 -- Jugadores base
-INSERT INTO players (team_id, number, name, position) VALUES
-(1, 10, 'Diego Pérez', 'Delantero'),
-(1, 7, 'Manuel Rodríguez', 'Mediocampista'),
-(1, 1, 'Andrés García', 'Arquero');
+INSERT INTO players (team_id, number, name, position, email) VALUES
+(1, 10, 'Diego Pérez', 'Delantero', 'diego.perez@example.com'),
+(1, 7, 'Manuel Rodríguez', 'Mediocampista', 'manuel.rodriguez@example.com'),
+(1, 1, 'Andrés García', 'Arquero', 'andres.garcia@example.com');
 
